@@ -24,7 +24,7 @@ sounds, only with a re-textured mesh. It appears in Haven City mixed into the no
 guard traffic, alongside the regular red guards.
 
 - **Target Game:** Jak 2
-- **Active Branch:** `jak2/features/city-peaceful` — base blue-guard traffic + the **City Peaceful**
+- **Repository:** [`whozghiar/jak2-mod-peaceful-haven-city`](https://github.com/whozghiar/jak2-mod-peaceful-haven-city) — base blue-guard traffic + the **City Peaceful**
   mode: ambient blue guards patrol as neutral 2-3 member squads.
 
 ### Branch family
@@ -140,7 +140,7 @@ crimson d'origine (`crimson-guard`), seul le mesh/la texture change. Il apparaî
 mélangé au trafic ambiant normal, aux côtés des gardes rouges classiques.
 
 - **Jeu Ciblé :** Jak 2
-- **Branche Active :** `jak2/features/city-peaceful` — base blue-guard + le mode **City Peaceful** :
+- **Dépôt :** [`whozghiar/jak2-mod-peaceful-haven-city`](https://github.com/whozghiar/jak2-mod-peaceful-haven-city) — base blue-guard + le mode **City Peaceful** :
   les gardes bleus ambiants patrouillent en escouades neutres de 2 à 3 membres.
 
 ### Famille de branches
