@@ -387,7 +387,7 @@ task modding-new-mod -- --new jak2/traffic-overhaul --description "Denser, smart
 
 ### 2. `task modding-switch -- <target>`
 - **Script:** [`switch_mod.py`](../../../scripts/modding/switch_mod.py)
-- **When?** Moving this working directory to another mod or back to `master-dev`.
+- **When?** Moving this working directory to another mod or back to `master-dev`. With one worktree per mod ([`repository_workflow.md`](repository_workflow.md#one-worktree-per-mod)) you open the mod's folder instead; git refuses to switch to a mod checked out in a worktree.
 - **Why?** Mod repositories share their history with this repository, so one clone holds them all and the extracted game data and build cache stay shared. A mod repository `<name>` becomes the remote `<name>` and the local branch `mods/<name>`, created and fetched on first use. The task also parks the knowledge-base submodule before switching to an old mod branch restored from its archive tag (those carry a plain copy of the skills at `.agents/skills`), then refreshes the knowledge base and the skill links. Those branches predate the task: to leave one, run `git switch master-dev`, then `task kb-update`. An archived branch named as the target gets the command that restores it.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
@@ -427,7 +427,7 @@ task modding-sync-branch -- --push
 ### 4. `task modding-sync-all -- [options]`
 - **Script:** [`sync_all_mods.py`](../../../scripts/modding/sync_all_mods.py)
 - **When?** After a change on `master-dev` that every mod should get (an engine patch, the Mods menu framework, tooling, shared docs, the knowledge-base pointer).
-- **Why?** Runs `task modding-sync-branch -- --push` for every mod repository at once, in temporary worktrees in the system temp folder, so your working directory, its branch and its uncommitted changes are never touched. The mod repositories are the local `mods/*` branches plus, when `gh` is installed, the account's repositories with the `opengoal-mod` topic. For each one it fetches it, merges `origin/master-dev` under the mod-repository rules and pushes to its `main`. It skips a mod already up to date, one whose `mods/<name>` holds commits that are not pushed, and the one checked out here (sync that one with `task modding-sync-branch -- --push`). A real conflict leaves that mod untouched, nothing pushed, and the summary names the files; the task then exits with an error.
+- **Why?** Runs `task modding-sync-branch -- --push` for every mod repository at once, in the mod's own worktree (`.worktrees/<name>.jak-project`) when it has one, otherwise in a temporary worktree in the system temp folder, so the folder you run it from is never touched. The mod repositories are the local `mods/*` branches plus, when `gh` is installed, the account's repositories with the `opengoal-mod` topic. For each one it fetches it, merges `origin/master-dev` under the mod-repository rules and pushes to its `main`. It skips a mod already up to date, one whose `mods/<name>` holds commits that are not pushed, one whose worktree has uncommitted changes, and the one checked out here (sync that one with `task modding-sync-branch -- --push`). A real conflict leaves that mod untouched, nothing pushed, and the summary names the files; the task then exits with an error.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
@@ -547,6 +547,6 @@ task git-hooks
 5. When publishing, upload the `.zip` archive as a GitHub Release asset (or trigger `release.yml` which automatically packages it).
 
 ### Scenario D: Bringing the Latest Modding Base into the Mods
-1. Every mod at once: `task modding-sync-all` (try `-- --dry-run` first). Only the current mod: switch to it (`task modding-switch -- <name>`), then `task modding-sync-branch -- --push`.
-2. If a mod reports a conflict, switch to it, run `task modding-sync-branch`, resolve the reported files, commit and push.
+1. Every mod at once: `task modding-sync-all` (try `-- --dry-run` first). Only one mod: in its folder (or after `task modding-switch -- <name>`), `task modding-sync-branch -- --push`.
+2. If a mod reports a conflict, open its folder (or switch to it), run `task modding-sync-branch`, resolve the reported files, commit and push.
 3. Test with cold boot: `task boot-game-retail`.

@@ -81,8 +81,7 @@ works without editing any script or workflow.
 ## 1. Create the mod repository
 
 ```bash
-task modding-switch -- master-dev
-task modding-new-mod
+task modding-new-mod     # from the main folder, on master-dev
 ```
 
 The task asks for:
@@ -97,7 +96,9 @@ The task asks for:
 
 It shows a summary and asks for confirmation, then creates `<owner>/<game>-mod-<name>` from
 `master-dev`, with a README from [`MOD_README.template.md`](../templates/MOD_README.template.md),
-and the local branch `mods/<game>-mod-<name>`. Switch to it and select its game:
+and the local branch `mods/<game>-mod-<name>`. Give it its own folder, a worktree, and open it:
+[Add a mod's worktree](repository_workflow.md#add-a-mods-worktree) has the commands, game
+selection and first build included. With a single folder instead:
 
 ```bash
 task modding-switch -- jak2-mod-my-mod
@@ -221,9 +222,9 @@ Every repository picks the change up at its next Claude Code session, or with
 - When the mod needs something newer from the base, run `task modding-sync-branch -- --push`: it
   merges `master-dev` into the current mod and pushes.
 - An improvement every mod should get (an engine patch, the Mods menu framework, a script)
-  belongs in `master-dev`: switch to it, commit, push, then run `task modding-sync-all`, which
-  merges `master-dev` into every mod repository and pushes them, without touching your working
-  directory (see [`repository_workflow.md`](repository_workflow.md#bring-it-into-every-mod-at-once)).
+  belongs in `master-dev`: make it in the main folder, commit, push, then run
+  `task modding-sync-all`, which merges `master-dev` into every mod repository and pushes them
+  (see [`repository_workflow.md`](repository_workflow.md#bring-it-into-every-mod-at-once)).
   If you wrote it in a mod first, bring it over with `git cherry-pick`.
 
 ## 9. Release
@@ -266,10 +267,9 @@ Every repository picks the change up at its next Claude Code session, or with
 
 ### The session loop
 
-1. **Switch first, then start the agent** in the working directory:
-   `task modding-switch -- <name>`. An agent works on whatever is checked out; do not switch
-   while it works. Two agents on two mods need two working directories (see the limits in
-   [`repository_workflow.md`](repository_workflow.md#limits)).
+1. **Open the mod's folder, then start the agent there**: `.worktrees/<name>.jak-project` (see
+   [`repository_workflow.md`](repository_workflow.md#one-worktree-per-mod)). An agent works on the
+   folder its session opens; with a single folder, switch first and not while it works.
 2. **Ask for one change with its check**, for example: "Add <feature> to this mod, off by default
    behind a Mods menu toggle; run compile-check and give me the cold-boot command."
 3. **The agent** reads the wiki and the code, edits, and runs `task compile-check` until it

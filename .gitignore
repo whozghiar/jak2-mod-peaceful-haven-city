@@ -93,3 +93,6 @@ unifont-15.0.03.ttf
 *.diff
 goalc-report.html
 _new-all-types.gc
+
+# one git worktree per mod (docs/modding/guides/repository_workflow.md)
+/.worktrees/

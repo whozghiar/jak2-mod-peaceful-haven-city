@@ -11,11 +11,12 @@ The mod repositories are the local mods/<name> branches plus, when gh is install
 repositories of the same GitHub account that carry the opengoal-mod topic. For each one:
 1. fetch it (adding it as a remote and a mods/<name> branch on first use);
 2. skip it when its main already contains origin/master-dev, when mods/<name> holds commits
-   that are not pushed (push them first: the merge starts from what is published), or when
+   that are not pushed (push them first: the merge starts from what is published), when
    mods/<name> is the branch checked out here (sync that one in place with
-   `task modding-sync-branch -- --push`);
-3. merge origin/master-dev into it in a temporary worktree outside this directory, under the
-   mod-repository rules of sync_branch_with_master_dev.py;
+   `task modding-sync-branch -- --push`), or when its worktree has uncommitted changes;
+3. merge origin/master-dev into it under the mod-repository rules of
+   sync_branch_with_master_dev.py: in the mod's own worktree (.worktrees/<name>.jak-project)
+   when it has one, otherwise in a temporary worktree outside this directory;
 4. push the merge to the repository's main; mods/<name> follows.
 A merge that hits a real conflict is abandoned and reported, and nothing is pushed for that
 mod. Your working directory, its current branch and its uncommitted changes are not touched.
@@ -64,6 +65,17 @@ def mod_names(selected: list[str]) -> list[str]:
     return sorted(names)
 
 
+def checked_out_at(branch: str) -> Path | None:
+    """The working directory that has branch checked out: this one, a worktree, or None."""
+    path = None
+    for line in run("worktree", "list", "--porcelain").stdout.splitlines():
+        if line.startswith("worktree "):
+            path = Path(line[len("worktree "):])
+        elif line == f"branch refs/heads/{branch}":
+            return path
+    return None
+
+
 def sync(name: str, dry_run: bool) -> tuple[bool, str]:
     """Bring one mod repository up to date. Returns (ok, what happened)."""
     branch, published = f"mods/{name}", f"{name}/main"
@@ -74,23 +86,33 @@ def sync(name: str, dry_run: bool) -> tuple[bool, str]:
     unpushed = count(f"{published}..{branch}")
     if unpushed:
         return False, f"skipped: {branch} has {unpushed} commit(s) that are not pushed; push them, then run again"
-    if run("branch", "--show-current").stdout.strip() == branch:
+    # A mod with its own worktree (.worktrees/<name>.jak-project) is merged in that worktree, since
+    # git checks a branch out in one place only; the working directory this runs from is left alone.
+    home = checked_out_at(branch)
+    if home and home.resolve() == REPO_ROOT.resolve():
         return False, "skipped: checked out here; sync it in place with task modding-sync-branch -- --push"
+    if home and run("status", "--porcelain", "--ignore-submodules=all", cwd=home).stdout.strip():
+        return False, f"skipped: {home} has uncommitted changes; commit or stash them, then run again"
     if count(f"{branch}..{published}") and not dry_run:
-        run("update-ref", f"refs/heads/{branch}", published)  # fast-forward to what is published
+        # fast-forward to what is published; in a worktree, move its files along with the branch
+        if home:
+            run("merge", "-q", "--ff-only", published, cwd=home)
+        else:
+            run("update-ref", f"refs/heads/{branch}", published)
     missing = count(f"{published}..{SOURCE}")
     if not missing:
         return True, "up to date"
     if dry_run:
         return True, f"would merge {missing} master-dev commit(s) and push"
 
-    worktree = WORKTREES / name
-    if worktree.exists():  # leftover of an interrupted run
-        run("worktree", "remove", "--force", str(worktree))
-    WORKTREES.mkdir(exist_ok=True)
-    added = run("worktree", "add", "-q", str(worktree), branch)
-    if added.returncode:
-        return False, f"not synced: {added.stderr.strip()}"
+    worktree = home or WORKTREES / name
+    if not home:
+        if worktree.exists():  # leftover of an interrupted run
+            run("worktree", "remove", "--force", str(worktree))
+        WORKTREES.mkdir(exist_ok=True)
+        added = run("worktree", "add", "-q", str(worktree), branch)
+        if added.returncode:
+            return False, f"not synced: {added.stderr.strip()}"
     try:
         res = subprocess.run([sys.executable, str(SYNC_SCRIPT), "--remote", "origin", "--mod-repo", "--push"],
                              cwd=worktree, capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -107,7 +129,8 @@ def sync(name: str, dry_run: bool) -> tuple[bool, str]:
         lines = (res.stderr or res.stdout).strip().splitlines()
         return False, f"not synced: {lines[-1] if lines else 'the sync script failed'}"
     finally:
-        run("worktree", "remove", "--force", str(worktree))
+        if not home:
+            run("worktree", "remove", "--force", str(worktree))
 
 
 def main() -> int:

@@ -1,7 +1,7 @@
 # How the Repository Works
 
-How the mother repository, the mod repositories and the knowledge base fit together, what
-switching between them in one working directory implies, and the commands for day-to-day work.
+How the mother repository, the mod repositories and the knowledge base fit together, how each
+mod gets its own folder (a git worktree) in one clone, and the commands for day-to-day work.
 For CI triggers and permissions see [`github_workflows.md`](github_workflows.md); for every task
 option see [`task_scripts_reference.md`](task_scripts_reference.md); to start a mod from scratch
 see [`how_to_create_a_mod.md`](how_to_create_a_mod.md).
@@ -25,7 +25,7 @@ open-goal/jak-project --daily--> jak-project master --> jak-project master-dev -
 opengoal-modding-kb (main) --submodule .agents/skills--> every repository above
 ```
 
-## 2. One working directory for every repository
+## 2. One clone, one folder per mod
 
 A mod repository shares its history with the mother, so one clone of `jak-project` holds every
 mod, the way it held mod branches:
@@ -36,7 +36,129 @@ mod, the way it held mod branches:
 | `mods/<name>` | The `main` branch of the mod repository `<name>`, which is a remote of the clone. `git push` on it goes to that repository's `main`. |
 | `archive/jak[1-3]/<type>/<slug>` (tags) | The old mod branches, archived: those of the moved mods, and the mods not moved yet. See [Archived branches](#archived-branches). |
 
-### Switching
+### One worktree per mod
+
+Each mod gets its own folder, a git worktree of the clone, and the main folder stays on
+`master-dev`. Changing mods means opening another folder: each one keeps its C++ build and its
+selected game, while the game data is shared between all of them. One copy of the extracted and
+compiled game exists at a time, so switching to a mod means extracting and compiling it again
+(see [Switch to another mod](#switch-to-another-mod)).
+
+```text
+jak-project/                                  master-dev; holds the game data
+└── .worktrees/                               ignored by git
+    └── <name>.jak-project/                   mods/<name>
+        ├── iso_data/        -> jak-project/iso_data/        (junction)
+        ├── decompiler_out/  -> jak-project/decompiler_out/  (junction)
+        └── out/
+            ├── build/                        its own C++ build
+            ├── jak1/, jak2/, jak3/  -> jak-project/out/jak1/, ...  (junctions)
+            └── textures/        -> jak-project/out/textures/    (junction)
+```
+
+Open a mod with **File ▸ Open Folder** on `.worktrees/<name>.jak-project`, or
+`code .worktrees/<name>.jak-project`.
+
+> [!IMPORTANT]
+> The folder name must end in `jak-project`. `gk`, `goalc` and the decompiler find the project
+> from the last `jak-project` in the path of their own executable
+> (`try_get_project_path_from_path` in `common/util/FileUtil.cpp`). Under any other name,
+> `jak-project-<name>` included, they run on the main folder's `goal_src/` and `out/`.
+
+What the worktrees share:
+
+| Folder | Depends on the mod? | In a worktree |
+| :--- | :--- | :--- |
+| `iso_data/` | No: the game files, never written. | A junction to the main folder's. |
+| `decompiler_out/` | No: what the decompiler extracts from the ISO. A mod's texture replacements and extra art groups are written to `out/<game>/fr3/`, not here. | A junction to the main folder's. |
+| `out/build/` | Yes: seven mods change C++ (the actor builder, the overlord, the decompiler), and the build compiles the sources of the folder that configured it. About 450 MB. | Its own. |
+| `out/<game>/`, `out/textures/` | Yes: the compiled game, the built CGO/DGO files and the `.fr3` level graphics. About 6 GB for Jak 2. | A junction to the main folder's, holding the last mod extracted and compiled. |
+| `.claude/skills/`, the selected game | Per folder. | Its own. |
+
+#### Add a mod's worktree
+
+From the main folder, in PowerShell, with `<name>` taken from `task modding-switch -- --list`
+(a mod that is not in the clone yet: `task modding-switch -- <name>`, then
+`task modding-switch -- master-dev`, fetches it):
+
+```powershell
+git worktree add .worktrees/<name>.jak-project mods/<name>
+$wt = ".worktrees\<name>.jak-project"
+Remove-Item -Recurse -Force "$wt\iso_data"    # the checkout's copy: only the per-game .gitignore files
+New-Item -ItemType Junction -Path "$wt\iso_data" -Target "$PWD\iso_data"
+New-Item -ItemType Junction -Path "$wt\decompiler_out" -Target "$PWD\decompiler_out"
+New-Item -ItemType Directory -Path "$wt\out"
+foreach ($d in "jak1", "jak2", "jak3", "textures") {
+  New-Item -ItemType Junction -Path "$wt\out\$d" -Target "$PWD\out\$d"
+}
+```
+
+Then, once, in the new folder, build its C++ (about 7 minutes for `gk` and `goalc`, seconds for
+the decompiler after them):
+
+```bash
+task kb-update && task ai-link && task set-game-<game>
+task gen-cmake-release
+task build-release-game
+task build-release-decomp
+```
+
+#### Switch to another mod
+
+Open its folder, then extract and compile it (under 3 minutes for a Jak 2 mod). There is no C++
+to rebuild: the worktree keeps its own `out/build/`, built once, until the mod's C++ changes.
+
+```bash
+task extract                 # the mod's level graphics into out/<game>/fr3
+```
+
+Then force the compile, in the REPL (`task repl`):
+
+```lisp
+(make-group "iso" :force #t)
+```
+
+or headless: `out/build/Release/bin/goalc --user-auto --game <game> --cmd '(make-group "iso" :force #t)'`.
+
+> [!IMPORTANT]
+> `(mi)` is `(make-group "iso")` without `:force`, and that is not enough after a switch.
+> Without `:force`, `goalc` recompiles a file only when its source is newer than its output
+> (`Tool::needs_run` in `goalc/make/Tool.cpp`). A worktree's sources date from its checkout,
+> older than what the previous mod compiled into the shared `out/<game>/`, so `(mi)` and
+> `task compile-check` would keep the previous mod's compiled files. `:force #t` recompiles
+> everything. The same holds for the main folder when you come back to `master-dev`. Once the
+> mod is compiled, `(mi)` is right again for the edits that follow, since an edited file is newer
+> than its output.
+
+#### Remove a mod's worktree
+
+> [!CAUTION]
+> Git sees a junction as a plain folder. `git worktree remove`, VS Code's **Delete Worktree** or
+> `git clean -x` would delete the shared `iso_data/`, `decompiler_out/` and `out/` game folders
+> through it. Remove the junctions first with `rmdir`, which deletes only the link (PowerShell
+> 5.1's `Remove-Item -Recurse` on a junction empties its target).
+
+```powershell
+$wt = ".worktrees\<name>.jak-project"
+foreach ($d in "iso_data", "decompiler_out", "out\jak1", "out\jak2", "out\jak3", "out\textures") {
+  cmd /c rmdir "$wt\$d"
+}
+git worktree remove .worktrees/<name>.jak-project     # the branch mods/<name> stays
+```
+
+#### Day to day
+
+| To | Do |
+| :--- | :--- |
+| Work on a mod | Open its folder and, coming from another mod, [switch](#switch-to-another-mod) first; then edit, `task compile-check`, commit, `git push` (it goes to the mod repository). |
+| Bring `master-dev` into a mod | `task modding-sync-branch -- --push` in its folder. |
+| Bring it into every mod | `task modding-sync-all` from the main folder: it merges in each mod's worktree, which must have no uncommitted changes. |
+| Rebuild after the mod's C++ changed (`game/`, `goalc/`, `common/`) | `task build-release-game` in its folder. |
+| Re-extract after its texture replacements or decompiler config changed | `task extract` in its folder. |
+
+### Switching one folder
+
+Without worktrees, one folder switches between mods:
 
 ```bash
 task modding-switch -- --list                     # the mod repositories
@@ -50,7 +172,8 @@ from its archive carries a plain copy of the skills at the same path, and git re
 in place of the other. The task parks the submodule first (after checking it holds no unpushed
 knowledge-base work) and refreshes the knowledge base and the skill links after switching. Old
 branches predate the task: to leave one, run `git switch master-dev` (or
-`git switch mods/<name>`), then `task kb-update`.
+`git switch mods/<name>`), then `task kb-update`. A mod that has a worktree cannot be switched
+to: git checks a branch out in one folder only, so open its worktree instead.
 
 #### From the IDE
 
@@ -62,13 +185,13 @@ as the task, except two things: it does not fetch a mod repository that is not i
 (run `task kb-update`, or let the next Claude Code session do it). Uncommitted changes follow
 you, or VS Code offers to stash them: commit before switching mods.
 
-### What a switch changes
+#### What a switch changes
 
 A switch replaces the tracked files (game code, engine, scripts, `Taskfile.yml`, docs, agent
 configuration) with the target's. Everything git ignores stays as it was: `iso_data/`,
 `decompiler_out/`, `out/` (the C++ build and the compiled game), the sccache cache, and the game
-selected with `task set-game-*`. No mod needs its own extraction, but the build outputs are the
-previous mod's until you rebuild what differs:
+selected with `task set-game-*`. The build outputs are the previous mod's until you rebuild what
+differs:
 
 | The two mods differ in | Run after the switch |
 | :--- | :--- |
@@ -82,50 +205,30 @@ previous mod's until you rebuild what differs:
 
 | Limit | Why | What to do |
 | :--- | :--- | :--- |
-| One mod at a time | A working directory has one checkout and one `out/`. | For two mods side by side, add a second working directory (see [Two mods side by side](#two-mods-side-by-side)). |
-| A clean tree to switch | The task refuses to switch over uncommitted changes or untracked files, so nothing is carried into the wrong mod. | Commit, or `git stash -u` and `git stash pop` when you come back. |
-| Extracted data lags behind | Textures and decompiler output stay as the last `task extract` made them. | Run `task extract` after switching to or from a mod that changes them; it takes minutes, not a full rebuild. |
-| Saves and settings are shared | `%APPDATA%/OpenGOAL/<game>/` holds the saves (a cold boot loads slot 1) and `pc-settings.gc` for every mod and for the stock game. | Before testing a mod, think about what the previous one saved: start a new game, or move the save files aside. |
-| One agent memory for every mod | Claude Code keeps its auto memory per folder, so every mod of the working directory shares it. | Keep a mod's notes in its `docs/modding/current_mod/`, and verified general facts in the knowledge base. |
+| Saves and settings are shared | `%APPDATA%/OpenGOAL/<game>/` holds the saves (a cold boot loads slot 1) and `pc-settings.gc` for every mod and for the stock game, whatever the folder. | Before testing a mod, think about what the previous one saved: start a new game, or move the save files aside. |
+| A clean tree | `task modding-switch` refuses to switch over uncommitted changes or untracked files, and `task modding-sync-all` skips a worktree that has some. | Commit, or stash with a message and apply it when you come back. |
+| One agent memory per folder | Claude Code keeps its auto memory per folder: each worktree has its own, while the mods switched in one folder share one. | Keep a mod's notes in its `docs/modding/current_mod/`, and verified general facts in the knowledge base. |
 | The knowledge base moves on its own | Each repository pins a knowledge-base commit, and the session hook fast-forwards `.agents/skills` to the latest, so `git status` can show `.agents/skills` as modified. | Commit it with your next change, or leave it: the next sync with `master-dev` brings the base's pointer. |
-
-### Two mods side by side
-
-Switching is enough for one mod at a time. To keep a second mod open in its own window, give it
-a second working directory, a git worktree, outside this folder:
-
-1. In VS Code: **Source Control**, **Source Control Repositories** view, the repository's
-   **More Actions (...)** menu, **Worktrees**, **Create Worktree**. Pick `mods/<name>` and a
-   folder next to this one, such as `..\jak-project-<name>`. From a terminal:
-   `git worktree add ../jak-project-<name> mods/<name>`.
-2. Open it with **Open Worktree in New Window** (right-click it in Source Control Repositories),
-   or `code ../jak-project-<name>`.
-3. In the new folder: `task kb-update` for the knowledge base, copy your game files into its
-   `iso_data/<game>/`, then `task set-game-<game>`, `task gen-cmake-release`,
-   `task build-release` and `task extract`: `iso_data/`, `decompiler_out/` and `out/` are per
-   folder.
-
-A branch can be checked out in only one working directory, and each folder has its own Claude
-Code memory. Remove one with `git worktree remove ../jak-project-<name>` (the branch stays).
 
 ## 3. Everyday tasks
 
 ### Start a new mod
 
 ```bash
-task modding-switch -- master-dev
-task modding-new-mod
+task modding-new-mod     # from the main folder, on master-dev
 ```
 
 The task asks for the game, the mod name (it names the repository `<game>-mod-<name>`), one sentence
 for players and the visibility, then creates the repository from `master-dev` with a README from
 [`MOD_README.template.md`](../templates/MOD_README.template.md), the `opengoal-mod` topic, and the
-local branch `mods/<game>-mod-<name>`. The whole procedure, through to the release, is in
+local branch `mods/<game>-mod-<name>`; give it a folder with
+[Add a mod's worktree](#add-a-mods-worktree). The whole procedure, through to the release, is in
 [`how_to_create_a_mod.md`](how_to_create_a_mod.md).
 
 ### Work on a mod
 
-On `mods/<name>`: edit, verify with `task compile-check`, ask for a cold boot
+In the mod's folder (or on `mods/<name>` after a switch): edit, verify with
+`task compile-check`, ask for a cold boot
 (`task boot-game-retail` checks the Mods menu), commit, then `git push`. The golden rules are in
 [`AGENTS.md`](../../../AGENTS.md): runtime toggle, native non-regression, comments, change log
 (in the mod's technical README, not in its player README).
@@ -167,10 +270,11 @@ task modding-sync-all -- jak2-mod-a jak2-mod-b   # only these
 
 For each mod repository (the `mods/*` branches, plus the `opengoal-mod` repositories of the
 account when `gh` is installed), the task fetches it, merges `origin/master-dev` with the same
-rules in a temporary worktree outside your working directory, and pushes the result to its `main`.
-It never touches your working directory, so it can run while you work. It skips a mod that is
-already up to date, one whose `mods/<name>` has commits you have not pushed (push them first),
-and the one you have checked out (sync that one with `task modding-sync-branch -- --push`). A mod
+rules in the mod's own worktree when it has one, otherwise in a temporary worktree outside your
+working directory, and pushes the result to its `main`. It never touches the folder you run it
+from. It skips a mod that is already up to date, one whose `mods/<name>` has commits you have not
+pushed (push them first), one whose worktree has uncommitted changes, and the one checked out in
+the folder you run it from (sync that one with `task modding-sync-branch -- --push`). A mod
 that hits a real conflict is left as it was, nothing pushed, and the summary says which files to
 resolve by hand.
 
@@ -287,9 +391,8 @@ To archive a branch yourself: `git tag -a archive/<branch> -m "Archived" origin/
 - Agents may compile (`task compile-check`, `task build-release-game`,
   `task build-release-decomp`) and never launch the game: a PreToolUse hook blocks `gk`,
   `task boot-game*`, `task run-game` and debugger attach.
-- An agent works on whatever is checked out: switch before starting a session, and do not switch
-  while an agent is working. Two agents on two mods need two working directories (see the limits
-  in section 2).
+- An agent works on the folder its session opens: start it in the mod's worktree. With a single
+  folder, switch before starting a session and not while an agent is working.
 - The archived mod branches predate this configuration; moving one to a repository brings it.
 
 ## 6. What runs on its own

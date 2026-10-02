@@ -12,5 +12,11 @@
   "files.associations": {
     "xhash": "cpp",
     "vector": "cpp"
+  },
+  "files.watcherExclude": {
+    ".worktrees/**": true
+  },
+  "search.exclude": {
+    ".worktrees/**": true
   }
 }
