@@ -69,12 +69,16 @@ find the existing entry, edit it in place, cite the evidence, then commit and pu
 `.agents/skills` submodule. Notes about the current mod alone stay in its `README.md` and
 `docs/modding/current_mod/`.
 
-## 6. Documentation standards
+## 6. Language and documentation standards
 
-English only; concise and tutorial-toned; one scope per document, stated in its first paragraph;
-no decorative icons (GitHub admonitions are fine); GOAL code only in the Lisp wiki, except `.gc`
-templates meant to be copied; verified facts only. The `documentalist` skill is the full
-checklist.
+**English for everything you write into the project**, whatever language the user speaks:
+`.md` files, code comments, commit messages, and PR, issue and review text. Each text exists
+once, in English alone. Reply to the user in their own language.
+
+Documentation is concise and tutorial-toned; one scope per document, stated in its first
+paragraph; no decorative icons (GitHub admonitions are fine); GOAL code only in the Lisp wiki,
+except `.gc` templates meant to be copied; verified facts only. The `documentalist` skill is the
+full checklist.
 
 ## 7. Commands and CI
 

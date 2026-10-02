@@ -27,7 +27,7 @@ docs/
 - **[Lisp Wiki (`.agents/skills/goal-lisp/wiki/`)](../.agents/skills/goal-lisp/wiki/index.md)**: verified Lisp instructions in the knowledge-base submodule — patterns and engine model shared by the three games in `common.md`, each game's specifics in `jak1.md`, `jak2.md` and `jak3.md`.
 - **[How to Create a Mod](modding/guides/how_to_create_a_mod.md)**: the step-by-step procedure, from your own fork and the first build to the release, with the resources to use, the AI-agent workflow and how to update the knowledge base.
 - **[Repository Workflow Guide](modding/guides/repository_workflow.md)**: how the mother repository, the mod repositories and the knowledge base fit together, what switching between them in one working directory implies, and the day-to-day commands (switch, sync, release, record knowledge).
-- **[AI Agent & Developer Guide (`AGENTS.md`)](../AGENTS.md)**: what every AI agent follows: compile but never launch the game, golden rules for mods, knowledge base, documentation standards, commands and Git.
+- **[AI Agent & Developer Guide (`AGENTS.md`)](../AGENTS.md)**: what every AI agent follows: compile but never launch the game, golden rules for mods, knowledge base, language and documentation standards, commands and Git.
 - **[GitHub Actions Workflows Guide](modding/guides/github_workflows.md)**: detailed pedagogical guide to repository CI/CD, upstream synchronization, releases, and issue triaging.
 - **[Task Commands & Modding Scripts Reference](modding/guides/task_scripts_reference.md)**: pedagogical reference for all Taskfile commands and `scripts/modding/*.py` automations.
 - **[Modular Skills (`.agents/skills/`)](../.agents/skills/)**: high-density engineering skills loaded on demand:
