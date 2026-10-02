@@ -76,3 +76,6 @@ Why this directory:
   automatically collects every `.zip` archive from this directory, computes
   its SHA-256 hash, registers it under `"texturePacks"` in `index.json`,
   and attaches it to the published GitHub Release.
+
+The OpenGOAL Launcher does not link a texture pack to a mod: its mod-source schema has no such field, it applies texture packs to the base game only, from a `.zip` the player adds in its Texture Packs screen, and its texture support for installed mods is not finished (checked on its `main` branch, 2026-10-02). Textures a mod needs belong in its own
+`custom_assets/<game>/texture_replacements/`, committed with `git add -f`.

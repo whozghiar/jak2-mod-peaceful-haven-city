@@ -14,7 +14,7 @@ or yours in a fork (see [section 7](#7-working-from-a-fork)).
 | Repository | Holds | Default branch |
 | :--- | :--- | :--- |
 | `<owner>/jak-project`, the mother | `master`: a mirror of `open-goal/jak-project`, synced daily. `master-dev`: the modding base every mod starts from (engine and compiler patches, the Mods menu framework, scripts, `Taskfile.yml`, CI, `AGENTS.md`, templates, and the global launcher catalog `index.json`). | `master-dev` |
-| `<owner>/<game>-<slug>`, one per mod | The mod: `master-dev` plus the mod's own changes, its README, releases and issues. `<slug>` is the mod's launcher catalog key, kept verbatim. Tagged with the `opengoal-mod` topic. | `main` |
+| `<owner>/<game>-mod-<slug>`, one per mod | The mod: `master-dev` plus the mod's own changes, its README, releases and issues. `<slug>` is the mod's launcher catalog key, kept verbatim. Tagged with the `opengoal-mod` topic. | `main` |
 | `opengoal-modding-kb`, the knowledge base | Agent skills and the verified Lisp wiki, mounted as the `.agents/skills` submodule in the mother and in every mod repository. Its URL is in `.gitmodules`. | `main` |
 
 ```text
@@ -40,7 +40,7 @@ mod, the way it held mod branches:
 
 ```bash
 task modding-switch -- --list                     # mod repositories, plus the mods still on a branch
-task modding-switch -- jak2-my-mod                # a mod repository, fetched on first use
+task modding-switch -- jak2-mod-my-mod            # a mod repository, fetched on first use
 task modding-switch -- master-dev                 # back to the modding base
 task modding-switch -- jak2/features/old-mod      # a mod still on a branch
 ```
@@ -89,10 +89,10 @@ task modding-switch -- master-dev
 task modding-new-mod
 ```
 
-The task asks for the game, the mod name (it names the repository `<game>-<name>`), one sentence
+The task asks for the game, the mod name (it names the repository `<game>-mod-<name>`), one sentence
 for players and the visibility, then creates the repository from `master-dev` with a README from
 [`MOD_README.template.md`](../templates/MOD_README.template.md), the `opengoal-mod` topic, and the
-local branch `mods/<game>-<name>`. The whole procedure, through to the release, is in
+local branch `mods/<game>-mod-<name>`. The whole procedure, through to the release, is in
 [`how_to_create_a_mod.md`](how_to_create_a_mod.md).
 
 ### Work on a mod
@@ -119,12 +119,15 @@ mod repository:
 | `master-dev`-only files (`.github/dependabot.yml`, the mod-suggestion issue form) | Removed. |
 | Everything else, game code included | A normal merge. A real conflict stops the sync for you to resolve. |
 
+In a clone of the mod repository alone, the same task adds a `mother` remote pointing at
+`<owner>/jak-project` on first use and merges its `master-dev`.
+
 ### Bring it into every mod at once
 
 ```bash
 task modding-sync-all -- --dry-run   # what would happen
 task modding-sync-all                # do it
-task modding-sync-all -- jak2-a jak2-b   # only these
+task modding-sync-all -- jak2-mod-a jak2-mod-b   # only these
 ```
 
 For each mod repository (the `mods/*` branches, plus the `opengoal-mod` repositories of the
@@ -167,7 +170,7 @@ next Claude Code session, or with `task kb-update`.
 task modding-new-mod -- --from-branch jak2/features/<slug>
 ```
 
-The branch stays. Add `--prepare-only` to build and inspect `mods/<game>-<slug>` before
+The branch stays. Add `--prepare-only` to build and inspect `mods/<game>-mod-<slug>` before
 publishing it.
 
 ### Private repositories
@@ -200,6 +203,15 @@ gh repo list <owner> --topic opengoal-mod
 ```
 
 On GitHub, search `user:<owner> topic:opengoal-mod`.
+
+### Why the mod repositories are not GitHub forks
+
+A GitHub account holds at most one repository per fork network ("you can only have one fork in a
+repository's network of forks", GitHub support), and `<owner>/jak-project` is already the
+account's fork of `open-goal/jak-project`. The mod repositories are therefore created by push.
+They share the mother's history the way forks do, so `git merge` syncs them the same way, and
+`task modding-sync-all` stands in for GitHub's Sync fork button. What a fork would add is the
+"forked from" link and pull requests between the mother and a mod on GitHub's web interface.
 
 ### Retire an old branch
 

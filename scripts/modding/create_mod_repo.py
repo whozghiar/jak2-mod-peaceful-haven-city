@@ -8,7 +8,7 @@ Create a mod repository: one GitHub repository per mod, derived from master-dev.
     python scripts/modding/create_mod_repo.py --from-branch jak2/features/a jak2/features/b
     python scripts/modding/create_mod_repo.py --from-branch jak2/features/a --prepare-only
 
-The repository is named <game>-<slug>, the slug being the mod's launcher catalog key kept
+The repository is named <game>-mod-<slug>, the slug being the mod's launcher catalog key kept
 verbatim (jak3-jetBoard keeps its capital B), so the launcher keeps seeing the same mod. In this
 clone, the mod repository is the remote <name> and its main branch is the local branch
 mods/<name>: switch to it with `task modding-switch -- <name>`. Nothing is ever deleted: the
@@ -110,7 +110,7 @@ def short_description(text: str) -> str:
 class Mod:
     def __init__(self, game: str, slug: str, start_ref: str, source_branch: str | None):
         self.game, self.slug, self.start_ref, self.source_branch = game, slug, start_ref, source_branch
-        self.name = f"{game}-{slug}"
+        self.name = f"{game}-mod-{slug}"
         self.branch = f"mods/{self.name}"
         self.remote = self.name
         self.worktree = WORKTREES / self.name
@@ -310,18 +310,21 @@ def ask_new_mod(args: argparse.Namespace) -> None:
         sys.exit("gh not found: install it (scoop install gh) and run gh auth login")
     print("New mod repository, created from master-dev.\n")
     game = ask("Game (jak1, jak2, jak3)", "jak2", r"jak[123]", "Answer jak1, jak2 or jak3.")
-    slug = ask(f"Mod name, letters, digits, - or _ (the repository becomes {game}-<name>)", "",
+    slug = ask(f"Mod name, letters, digits, - or _ (the repository becomes {game}-mod-<name>)", "",
                r"[A-Za-z0-9][A-Za-z0-9_-]*", "Use letters, digits, - and _, starting with a letter or digit.")
-    name = f"{owner()}/{game}-{slug}"
+    # The repository name carries the "mod-" part itself: "mod-foo" means "foo".
+    if slug.lower().startswith("mod-"):
+        slug = slug[len("mod-"):]
+    name = f"{owner()}/{game}-mod-{slug}"
     if subprocess.run(["gh", "repo", "view", name], capture_output=True).returncode == 0:
-        sys.exit(f"{name} already exists: switch to it with task modding-switch -- {game}-{slug}")
+        sys.exit(f"{name} already exists: switch to it with task modding-switch -- {game}-mod-{slug}")
     args.description = ask("One sentence for players (README overview and repository description)")
     args.youtube = ask("Demo video URL (optional)")
     visibility = ask("Visibility (public, private)", "public", r"public|private", "Answer public or private.")
     args.private = visibility == "private"
     args.new = f"{game}/{slug}"
     print(f"\nRepository  : {name} ({visibility})"
-          f"\nLocal branch: mods/{game}-{slug}"
+          f"\nLocal branch: mods/{game}-mod-{slug}"
           f"\nCatalog key : {slug}")
     if args.private:
         print("Private: players cannot install it from the launcher until you make it public.")

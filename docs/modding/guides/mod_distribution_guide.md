@@ -96,7 +96,7 @@ The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod
 
 **Command line:**
 ```bash
-gh workflow run release.yml --repo <owner>/jak2-my-mod --ref main \
+gh workflow run release.yml --repo <owner>/jak2-mod-my-mod --ref main \
   -f mod_name="Jak 3 JetBoard" \
   -f mod_description="Adds Jak 3's jetboard to Jak 2." \
   -f tag_name="v1.0.0"
@@ -120,17 +120,17 @@ The `scripts/modding/update_mod_catalog.py` script automatically generates an `i
       "authors": ["MyHandle"],
       "tags": ["gameplay", "custom-engine"],
       "supportedGames": ["jak2"],
-      "websiteUrl": "https://github.com/user/jak2-my-mod",
-      "coverArtUrl": "https://raw.githubusercontent.com/user/jak2-my-mod/main/docs/img/mod/mod_cover.png",
-      "thumbnailArtUrl": "https://raw.githubusercontent.com/user/jak2-my-mod/main/docs/img/mod/mod_cover.png",
+      "websiteUrl": "https://github.com/user/jak2-mod-my-mod",
+      "coverArtUrl": "https://raw.githubusercontent.com/user/jak2-mod-my-mod/main/docs/img/mod/mod_cover.png",
+      "thumbnailArtUrl": "https://raw.githubusercontent.com/user/jak2-mod-my-mod/main/docs/img/mod/mod_cover.png",
       "versions": [
         {
           "version": "1.0.0",
           "publishedDate": "2026-09-13T15:00:00Z",
           "supportedGames": ["jak2"],
           "assets": {
-            "windows": "https://github.com/user/jak2-my-mod/releases/download/my-mod-v1.0.0/windows-my-mod-v1.0.0.zip",
-            "linux": "https://github.com/user/jak2-my-mod/releases/download/my-mod-v1.0.0/linux-my-mod-v1.0.0.zip"
+            "windows": "https://github.com/user/jak2-mod-my-mod/releases/download/my-mod-v1.0.0/windows-my-mod-v1.0.0.zip",
+            "linux": "https://github.com/user/jak2-mod-my-mod/releases/download/my-mod-v1.0.0/linux-my-mod-v1.0.0.zip"
           },
           "checksums": {
             "windows": "a1b2c3d4...",

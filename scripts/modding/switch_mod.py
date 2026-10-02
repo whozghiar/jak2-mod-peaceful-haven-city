@@ -3,7 +3,7 @@
 Switch this working directory between master-dev, the mod repositories and the mods still on a
 branch, the way `git switch` moved between mod branches.
 
-    task modding-switch -- jak2-blue-krimzon-guard          # a mod repository
+    task modding-switch -- jak2-mod-blue-krimzon-guard      # a mod repository
     task modding-switch -- master-dev                       # the modding base
     task modding-switch -- jak2/features/haven-city-chaos   # a mod still on a branch
     task modding-switch -- --list                           # what you can switch to
@@ -100,7 +100,7 @@ def resolve(target: str) -> str:
         return target
     if re.fullmatch(r"jak[123]-[A-Za-z0-9_.-]+", target):
         return mod_branch(target)
-    sys.exit(f"Unknown target '{target}': give a mod repository name (e.g. jak2-blue-krimzon-guard), "
+    sys.exit(f"Unknown target '{target}': give a mod repository name (e.g. jak2-mod-blue-krimzon-guard), "
              "master-dev, or a branch name (see: task modding-switch -- --list)")
 
 
@@ -165,7 +165,7 @@ def list_targets() -> None:
         moved = {n.lower(): n for n in local | set(published)}
         for b in branches:
             m = re.match(r"^(jak[123])/[^/]+/(.+)$", b)
-            repo = moved.get(f"{m.group(1)}-{m.group(2).replace('/', '-').replace('_', '-')}".lower()) if m else None
+            repo = moved.get(f"{m.group(1)}-mod-{m.group(2).replace('/', '-').replace('_', '-')}".lower()) if m else None
             note = f"moved to {repo}" if repo else ""
             print(f" {'*' if current == b else ' '} {b:40} {note}")
 

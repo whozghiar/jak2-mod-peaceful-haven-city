@@ -4,7 +4,7 @@ Merge the latest master-dev into every mod repository and push it: what
 `task modding-sync-branch -- --push` does for the mod you are on, for all of them at once.
 
     task modding-sync-all                          # every mod repository
-    task modding-sync-all -- jak2-foo jak2-bar     # only these
+    task modding-sync-all -- jak2-mod-a jak2-mod-b # only these
     task modding-sync-all -- --dry-run             # report what would happen, merge and push nothing
 
 The mod repositories are the local mods/<name> branches plus, when gh is installed, the

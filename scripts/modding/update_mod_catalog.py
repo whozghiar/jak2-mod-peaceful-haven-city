@@ -57,7 +57,7 @@ def mod_identity(index_path: Path, repo: str):
 
   The repository's own index.json names exactly one mod: its key is the launcher catalog key,
   kept verbatim (e.g. `jak3-jetBoard`), and supportedGames[0] is its game. A repository with no
-  catalog yet falls back to its name, `<game>-<slug>` (e.g. `jak2-blue-krimzon-guard`).
+  catalog yet falls back to its name, `<game>-mod-<slug>` (e.g. `jak2-mod-blue-krimzon-guard`).
   Returns (None, None) for anything else, such as the mother repository's global catalog.
   """
   try:
@@ -68,7 +68,7 @@ def mod_identity(index_path: Path, repo: str):
     slug, entry = next(iter(mods.items()))
     games = entry.get("supportedGames") or []
     return slug, (games[0] if games else None)
-  m = re.match(r"^(jak[123])-(.+)$", repo.split("/")[-1])
+  m = re.match(r"^(jak[123])-(?:mod-)?(.+)$", repo.split("/")[-1])
   if m:
     return m.group(2), m.group(1)
   return None, None
@@ -271,7 +271,8 @@ def get_next_version(index_path: Path, mod_slug: str = "") -> str:
   return candidate_tag
 
 
-def refresh_metadata_only(index_path, mod_id, display_name, description, supported_games, cover_url):
+def refresh_metadata_only(index_path, mod_id, display_name, description, supported_games, cover_url,
+                          website_url=None):
   """
   Update only a mod's display metadata (name, description, supported games, cover) in
   an EXISTING index.json entry — never touches `versions[]`, never invents a tag.
@@ -309,6 +310,9 @@ def refresh_metadata_only(index_path, mod_id, display_name, description, support
   if cover_url:
     mod_entry["coverArtUrl"] = cover_url
     mod_entry["thumbnailArtUrl"] = cover_url
+  # A mod repository's page is the repository itself, which follows it through a rename.
+  if website_url:
+    mod_entry["websiteUrl"] = website_url
 
   if json.dumps(mod_entry, sort_keys=True) == before:
     print(f"[OK] '{mod_id}' metadata unchanged — {index_path} left as-is.")
@@ -588,6 +592,7 @@ def main():
             if args.supported_games else [detected_game]
         ),
         cover_url=resolved_cover_url,
+        website_url=website_url if repo_slug else None,
     )
     return
 

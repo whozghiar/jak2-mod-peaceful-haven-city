@@ -87,17 +87,17 @@ The task asks for:
 | Question | What it decides |
 | :--- | :--- |
 | Game | `jak1`, `jak2` or `jak3`: the first part of the repository name. |
-| Mod name | The repository name (`<game>-<name>`, shown in the question) and the mod's launcher catalog key. Players' launchers know the mod by this key, so pick it for good. |
+| Mod name | The repository name (`<game>-mod-<name>`, shown in the question) and the mod's launcher catalog key. Players' launchers know the mod by this key, so pick it for good. |
 | One sentence | The README overview and the repository description. |
 | Demo video | Optional YouTube link embedded in the README. |
 | Visibility | `public` (default) or `private`. A private mod stays out of the launcher catalog until you make it public (see section 9). |
 
-It shows a summary and asks for confirmation, then creates `<owner>/<game>-<name>` from
+It shows a summary and asks for confirmation, then creates `<owner>/<game>-mod-<name>` from
 `master-dev`, with a README from [`MOD_README.template.md`](../templates/MOD_README.template.md),
-and the local branch `mods/<game>-<name>`. Switch to it and select its game:
+and the local branch `mods/<game>-mod-<name>`. Switch to it and select its game:
 
 ```bash
-task modding-switch -- jak2-my-mod
+task modding-switch -- jak2-mod-my-mod
 task set-game-jak2
 ```
 
@@ -167,12 +167,16 @@ to.
 
 - **Models, animations, sounds, levels:** sources under `custom_assets/<game>/`; the
   `custom-actors-levels` skill walks through the Blender export and the build steps.
-- **Textures:** PNGs under `custom_assets/<game>/texture_replacements/`, baked by
-  `task extract`; the `texture-modding` skill has the layout and format rules. A standalone
-  texture pack is exported with the
+- **Textures that are part of the mod:** PNGs under
+  `custom_assets/<game>/texture_replacements/`, baked by `task extract`; the `texture-modding`
+  skill has the layout and format rules. That folder is gitignored: commit the PNGs the mod
+  ships with `git add -f`. The release copies `custom_assets/` into the archive, and the mod's
+  extractor bakes them when a player installs it. This is how textures reach a mod's players.
+- **A standalone texture pack** is a `.zip` exported with the
   [OpenGOAL Texture Pack Generator](https://github.com/whozghiar/open-goal-texture-pack-generator)
-  into `docs/modding/current_mod/texture_packs/`, then registered with
-  `task modding-package-texture-pack`.
+  into `docs/modding/current_mod/texture_packs/`, registered with
+  `task modding-package-texture-pack`, committed with `git add -f`, and attached to the mod's
+  release. The OpenGOAL Launcher does not link a texture pack to a mod: its mod-source schema has no such field, it applies texture packs to the base game only, from a `.zip` the player adds in its Texture Packs screen, and its texture support for installed mods is not finished (checked on its `main` branch, 2026-10-02). A pack therefore reaches the base game, not the mod.
 
 ## 6. Document the mod
 
@@ -225,11 +229,11 @@ Every repository picks the change up at its next Claude Code session, or with
    retail Mods menu, prefixed symbols, comments), then a cold `task boot-game-retail`.
 2. **Make it public** if you created it private:
    ```bash
-   gh repo edit <owner>/jak2-my-mod --visibility public --accept-visibility-change-consequences
+   gh repo edit <owner>/jak2-mod-my-mod --visibility public --accept-visibility-change-consequences
    ```
 3. **Run the release** from the repository's Actions tab (`release.yml`), or:
    ```bash
-   gh workflow run release.yml -R <owner>/jak2-my-mod --ref main \
+   gh workflow run release.yml -R <owner>/jak2-mod-my-mod --ref main \
      -f mod_name="My Mod" -f mod_description="One sentence." -f tag_name="v1.0.0"
    ```
    It rebuilds Windows and Linux (30 to 60 minutes), tags `<slug>-v1.0.0`, and publishes the

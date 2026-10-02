@@ -103,7 +103,7 @@ Creating a mod step by step: [`docs/modding/guides/how_to_create_a_mod.md`](docs
 
 - `master` mirrors `open-goal/jak-project`. Never commit to it.
 - `master-dev` is the modding base. Every mod starts from it.
-- **One repository per mod:** `<owner>/<game>-<slug>`, the slug being the mod's launcher
+- **One repository per mod:** `<owner>/<game>-mod-<slug>`, the slug being the mod's launcher
   catalog key. In this clone it is the branch `mods/<name>`: switch with
   `task modding-switch -- <name>` (not a bare `git switch`), `git push` goes to its `main`, and
   `task modding-sync-branch -- --push` merges the latest `master-dev` into it.

@@ -32,7 +32,7 @@ repositories created from its `master-dev`, which inherit the same files. The da
         v
 [<owner>/jak-project] master-dev    modding base: engine patches, tooling, Mods menu
         |
-        +--> mod repositories, <owner>/<game>-<slug>  (task modding-new-mod)
+        +--> mod repositories, <owner>/<game>-mod-<slug>  (task modding-new-mod)
         |       on demand: task modding-sync-branch -- --push, or task modding-sync-all
         |       on push: lint.yml; by hand: build.yml, release.yml
         |
@@ -141,7 +141,7 @@ A mod repository syncs locally instead: `task modding-sync-branch -- --push` on 
     `docs/modding/current_mod/texture_packs/`;
   - writes `SHA256SUMS.txt`, updates the mod's own `index.json` and commits it back;
   - tags the release `<slug>-vX.Y.Z`. In a mod repository, the slug and game come from its
-    `index.json` (else from its `<game>-<slug>` name), so the launcher keeps the same catalog key.
+    `index.json` (else from its `<game>-mod-<slug>` name), so the launcher keeps the same catalog key.
 - **Downstream sync (mother repository only):** `gh workflow run sync-global-catalog.yml`. A
   release published with `GITHUB_TOKEN` cannot fire another workflow's `on: release` trigger, so
   this explicit call is what refreshes the catalog; it needs `actions: write`. Releases of mod

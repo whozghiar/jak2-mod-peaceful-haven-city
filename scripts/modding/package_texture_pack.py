@@ -59,19 +59,38 @@ def detect_current_branch() -> str:
 
 
 def detect_github_repo_info() -> tuple[str, str]:
-  """Return (owner, repo_name) inferred from origin remote URL."""
-  remote_url = run_git(["config", "--get", "remote.origin.url"])
-  match = re.search(r"github\.com[/:]([\w-]+)/([\w-]+?)(?:\.git)?$", remote_url)
+  """Return (owner, repo_name) of the repository the current branch publishes to: the mod
+  repository for mods/<name>, origin otherwise."""
+  branch = detect_current_branch()
+  remote = run_git(["config", "--get", f"branch.{branch}.remote"]) or "origin"
+  remote_url = run_git(["remote", "get-url", remote])
+  match = re.search(r"github\.com[/:]([\w.-]+)/([\w.-]+?)(?:\.git)?$", remote_url)
   if match:
     return (match.group(1), match.group(2))
-  raise SystemExit("origin is not a GitHub repository: the texture pack URLs point at it.")
+  raise SystemExit(f"{remote} is not a GitHub repository: the texture pack URLs point at it.")
+
+
+def published_branch() -> str:
+  """The current branch's name on GitHub: mods/<name> publishes to its repository's main."""
+  branch = detect_current_branch()
+  merge = run_git(["config", "--get", f"branch.{branch}.merge"])
+  return merge.replace("refs/heads/", "", 1) if merge else branch
+
+
+def mod_repo_slug() -> str | None:
+  """The catalog key of the mod on a mods/<name> branch: the single key of its index.json."""
+  try:
+    mods = json.loads((REPO_ROOT / "index.json").read_text(encoding="utf-8")).get("mods") or {}
+  except (OSError, ValueError):
+    return None
+  return next(iter(mods)) if len(mods) == 1 else None
 
 
 def detect_active_game() -> str:
   """Auto-detect active game from branch, .env, or custom_assets/."""
   branch = detect_current_branch()
   for candidate in ["jak1", "jak2", "jak3", "jakx"]:
-    if branch.startswith(f"{candidate}/"):
+    if branch.startswith((f"{candidate}/", f"mods/{candidate}-")):
       return candidate
 
   env_file = REPO_ROOT / "scripts" / "tasks" / ".env"
@@ -128,8 +147,11 @@ def derive_release_download_url(
   if release_url_base:
     return f"{release_url_base.rstrip('/')}/{zip_name}"
 
+  # A mod repository (mods/<name>) releases as <catalog key>-vX.Y.Z.
+  if branch.startswith("mods/") and mod_repo_slug():
+    release_tag = f"{mod_repo_slug()}-v{version}"
   # If on a mod branch like jak2/features/blue-krimzon-guard, use the mod release tag
-  if branch.startswith(("jak1/", "jak2/", "jak3/", "jakx/")) and "/" in branch:
+  elif branch.startswith(("jak1/", "jak2/", "jak3/", "jakx/")) and "/" in branch:
     mod_leaf = branch.split("/")[-1]
     release_tag = f"{mod_leaf}-v{version}"
   else:
@@ -179,10 +201,10 @@ def register_texture_pack_zip(
   tp_tags = meta.get("tags") or [detected_game, "retexture"]
   if isinstance(tp_tags, list):
     branch_m = re.match(r"^jak[123]/(?:features|config)/(.+)$", branch)
-    if branch_m:
-      mod_slug = branch_m.group(1).replace("/", "-").replace("_", "-")
-      if mod_slug not in tp_tags:
-        tp_tags.append(mod_slug)
+    mod_slug = (branch_m.group(1).replace("/", "-").replace("_", "-") if branch_m
+                else mod_repo_slug() if branch.startswith("mods/") else None)
+    if mod_slug and mod_slug not in tp_tags:
+      tp_tags.append(mod_slug)
   tp_supported = meta.get("supportedGames") or [detected_game]
 
   now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -199,10 +221,11 @@ def register_texture_pack_zip(
   )
 
   # Check cover candidate URLs
+  web_branch = published_branch()
   cover_url = (
-      f"https://raw.githubusercontent.com/{owner}/{repo_name}/{branch}/docs/img/mod/mod_cover.png"
+      f"https://raw.githubusercontent.com/{owner}/{repo_name}/{web_branch}/docs/img/mod/mod_cover.png"
   )
-  website_url = f"https://github.com/{owner}/{repo_name}/tree/{branch}"
+  website_url = f"https://github.com/{owner}/{repo_name}/tree/{web_branch}"
 
   pack_info = {
       "slug": base_slug,

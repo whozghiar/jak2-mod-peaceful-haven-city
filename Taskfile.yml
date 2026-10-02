@@ -171,7 +171,7 @@ tasks:
     cmds:
       - "{{.PYTHON}} ./scripts/modding/create_mod_repo.py {{.CLI_ARGS}}"
   modding-switch:
-    desc: "Switch this working directory to a mod repository (mods/<name>, fetched on first use), master-dev or a mod branch (scripts/modding/switch_mod.py). e.g. -- jak2-blue-krimzon-guard, or -- --list"
+    desc: "Switch this working directory to a mod repository (mods/<name>, fetched on first use), master-dev or a mod branch (scripts/modding/switch_mod.py). e.g. -- jak2-mod-blue-krimzon-guard, or -- --list"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/switch_mod.py {{.CLI_ARGS}}"
   modding-sync-branch:
@@ -179,7 +179,7 @@ tasks:
     cmds:
       - "{{.PYTHON}} ./scripts/modding/sync_branch_with_master_dev.py {{.CLI_ARGS}}"
   modding-sync-all:
-    desc: "Merge the latest master-dev into every mod repository and push them, without touching this working directory (scripts/modding/sync_all_mods.py). e.g. -- --dry-run, or -- jak2-foo jak2-bar"
+    desc: "Merge the latest master-dev into every mod repository and push them, without touching this working directory (scripts/modding/sync_all_mods.py). e.g. -- --dry-run, or -- jak2-mod-a jak2-mod-b"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/sync_all_mods.py {{.CLI_ARGS}}"
   modding-sync-catalog:

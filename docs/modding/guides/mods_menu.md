@@ -118,7 +118,7 @@ documentation.
 | config var | prefixed with the mod slug |
 | helper function | prefixed with the mod slug |
 | builder function | named `mod-<slug>-build-menu` |
-| registry label | the mod slug: the launcher catalog key, which is the repository name without its `<game>-` prefix |
+| registry label | the mod slug: the launcher catalog key, which is the repository name without its `<game>-mod-` prefix |
 
 ## 4. Wiring the template into a build
 

@@ -123,14 +123,14 @@ def discover_mod_repos(owner: str, token: str) -> list[dict]:
 
 def mod_repo_entry(full_name: str, token: str) -> tuple[str | None, dict]:
   """The catalog key a mod repository publishes and its entry: the single mod of its own
-  index.json, or just the `<slug>` of its `<game>-<slug>` name when it has none yet."""
+  index.json, or just the `<slug>` of its `<game>-mod-<slug>` name when it has none yet."""
   try:
     mods = fetch_json(f"https://raw.githubusercontent.com/{full_name}/HEAD/index.json", token).get("mods") or {}
   except Exception:
     mods = {}
   if len(mods) == 1:
     return next(iter(mods.items()))
-  m = re.match(r"^jak[123]-(.+)$", full_name.split("/")[-1])
+  m = re.match(r"^jak[123]-(?:mod-)?(.+)$", full_name.split("/")[-1])
   return (m.group(1) if m else None), {}
 
 
@@ -522,6 +522,15 @@ def main():
       print(f"  • [{game}] {name} ({k}) — {v_count} version(s) [tags: {', '.join(tags)}]")
 
   catalog = generate_global_catalog(mods, texture_packs, args.source_name)
+  # Nothing new since the last run: keep its timestamp, so the file stays as it is and the daily
+  # workflow commits nothing.
+  try:
+    previous = json.loads(Path(args.output).read_text(encoding="utf-8"))
+    if ({k: v for k, v in previous.items() if k != "lastUpdated"}
+        == {k: v for k, v in catalog.items() if k != "lastUpdated"}):
+      catalog["lastUpdated"] = previous.get("lastUpdated", catalog["lastUpdated"])
+  except (OSError, ValueError):
+    pass
   catalog_json = json.dumps(catalog, indent=2, ensure_ascii=False) + "\n"
 
   if args.dry_run:
