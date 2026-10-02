@@ -12,8 +12,8 @@ Modify `goal_src/jak1/engine/level/level-info.gc` to add level info for each cus
 
 # 3: Modify the build system
 Modify `goal_src/jak1/game.gp` and add a custom level build target and its
-DGO file declaration. The exact macro calls are documented in
-`docs/modding/lisp_instructions.md` ("Static props, custom levels, and
+DGO file declaration. The exact macro calls are documented in the Lisp wiki,
+`.agents/skills/goal-lisp/wiki/common.md` ("Static props, custom levels, and
 audio banks") — the same two calls apply to every game, only the file paths
 change.
 

@@ -1,13 +1,12 @@
-name: "\U0001F9E9 Mod Bug Report"
-description: Report a bug found in one of this repository's custom mods (not a vanilla/base-game bug).
-labels: ["bug", "mod-bug", "needs-triage"]
+name: "Mod Bug Report"
+description: Report a bug in the mod this repository holds (not a vanilla/base-game bug).
+labels: ["bug", "needs-triage"]
 type: "bug"
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing one of my custom mods! This form is **only** for bugs in a
-        mod.
+        Thanks for testing this mod! This form is **only** for bugs in the mod.
         For a bug in the vanilla/base game, please refer to https://github.com/open-goal/jak-project/issues
   - type: dropdown
     attributes:
@@ -17,29 +16,6 @@ body:
         - Jak 1
         - Jak 2
         - Jak 3
-    validations:
-      required: true
-
-  - type: dropdown
-    attributes:
-      label: Mod Concerned
-      description: >
-        Only mods with at least one published GitHub Release are listed, by the exact
-        display name from that release (kept in sync automatically — see
-        docs/modding/guides/mod_bug_tracking.md). If your mod isn't listed — it may still
-        be unreleased.
-      options:
-        # BEGIN GENERATED — scripts/modding/sync_bug_report_options.py (do not edit by hand)
-        - "[Jak 2] Blue Krimzon Guard (Freedom Fighters)"
-        - "[Jak 2] Dark Jak Enhanced"
-        - "[Jak 2] Haven City Rebellion"
-        - "[Jak 2] Jak 3 Jetboard"
-        - "[Jak 2] KG-Transporter Alert"
-        - "[Jak 2] KG-Transporter Traffic"
-        - "[Jak 2] Killable Yakow"
-        - "[Jak 2] Paddy Wagon"
-        - "[Jak 2] Peaceful Haven City (Freedom Fighters)"
-        # END GENERATED
     validations:
       required: true
 

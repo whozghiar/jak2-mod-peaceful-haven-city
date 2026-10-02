@@ -1,28 +1,19 @@
 #!/usr/bin/env python3
 """
-Shared rules used by both branch-sync scripts:
-    - sync_branches_with_master.py  (CI fan-out: every mod branch, daily cron)
-    - sync_branch_with_master_dev.py (local: one branch, run by a developer)
+Shared rules used when master-dev is merged into a mod: by
+sync_branch_with_master_dev.py (a mod branch of this repository, or a mod
+repository syncing from its `mother` remote) and by create_mod_repo.py.
 
 Why this module exists
 -----------------------
-Both scripts merge `master-dev` into a mod branch and must resolve the same
-handful of paths the same way every time (the mod's own README stays the
-mod's, the shared docs/skills come from master-dev, stray workflow files are
-dropped). Before this module, that rule table was copy-pasted in both
-scripts; a rule change made in one and forgotten in the other would silently
-desync CI behaviour from local behaviour. Now there is exactly one place to
-edit it.
-
-It also carries a tiny helper for building GitHub's own Actions status badge
-markdown (see docs.github.com/actions/how-tos/monitor-workflows/add-a-status-badge).
-These badges need no rendering or upkeep from Python: GitHub generates the
-SVG live from a workflow's real run history, so the sync scripts only ever
-need to write this markdown ONCE, at branch-creation time.
+Every sync must resolve the same handful of paths the same way (the mod's own
+README stays the mod's, the shared docs come from master-dev, stray workflow
+files are dropped). Keeping that rule table in its own module gives the
+scripts and the workflows that rely on it (build.yml, lint.yml, release.yml)
+one place to point at.
 """
 
 import os
-from urllib.parse import quote
 
 # Files that make sense only on master-dev. A plain `git merge master-dev`
 # would otherwise happily carry them onto every mod branch (they are not in
@@ -30,7 +21,7 @@ from urllib.parse import quote
 # explicitly `git rm` them back out after merging. Keep this list short: it
 # is a statement of "this file does not belong on a mod branch", not a
 # general-purpose ignore list.
-MASTER_DEV_ONLY_PATHS = []
+MASTER_DEV_ONLY_PATHS = [".github/ISSUE_TEMPLATE/mod-suggestion.yml"]
 
 # The only workflow files a mod branch is meant to carry (see
 # classify_conflict_path's "drop" rule below and AGENTS.md for why this fork
@@ -45,8 +36,16 @@ ALLOWED_MOD_BRANCH_WORKFLOWS = {
     "sync-branch-with-master-dev.yml",
 }
 
+# A mod repository (one GitHub repository per mod, synced from the mother
+# repository's master-dev) has no branch badge and no in-repo branch sync.
+ALLOWED_MOD_REPO_WORKFLOWS = {
+    "release.yml",
+    "lint.yml",
+    "build.yml",
+}
 
-def stray_workflow_files(repo_root):
+
+def stray_workflow_files(repo_root, allowed=ALLOWED_MOD_BRANCH_WORKFLOWS):
     """.github/workflows/* files on disk that don't belong on a mod branch.
 
     classify_conflict_path's "drop" rule only ever runs on paths git reports as
@@ -63,12 +62,12 @@ def stray_workflow_files(repo_root):
     return [
         f".github/workflows/{name}"
         for name in sorted(os.listdir(workflows_dir))
-        if name not in ALLOWED_MOD_BRANCH_WORKFLOWS
+        if name not in allowed
         and os.path.isfile(os.path.join(workflows_dir, name))
     ]
 
 
-def classify_conflict_path(filepath):
+def classify_conflict_path(filepath, allowed=ALLOWED_MOD_BRANCH_WORKFLOWS):
     """
     One rule table, one place. Given a path that conflicted (or would
     conflict) while merging master-dev into a mod branch, returns how to
@@ -90,39 +89,11 @@ def classify_conflict_path(filepath):
         # every merge, conflict or not.
         return "drop"
     if filepath.startswith(".github/workflows/"):
-        return "theirs" if filepath[len(".github/workflows/"):] in ALLOWED_MOD_BRANCH_WORKFLOWS else "drop"
-    if (filepath == "docs/modding/branch_audit.md"
-            or filepath == "AGENTS.md"
-            or filepath == ".gitmodules"
+        return "theirs" if filepath[len(".github/workflows/"):] in allowed else "drop"
+    if (filepath in ("AGENTS.md", "CLAUDE.md", ".gitmodules")
+            or filepath.startswith((".claude/", ".gemini/", "scripts/ai/"))
             or filepath.startswith(".agents/")
             or filepath.startswith(".github/ISSUE_TEMPLATE/")
             or (filepath.startswith("docs/modding/") and not filepath.startswith("docs/modding/current_mod/"))):
         return "theirs"
     return None
-
-
-def is_auto_resolvable(filepath):
-    """True if classify_conflict_path() knows how to resolve this path
-    deterministically (used by the CI dry-run to tell a real code conflict
-    apart from an expected, always-resolved-the-same-way one)."""
-    return classify_conflict_path(filepath) is not None
-
-
-def github_actions_badge_markdown(repo_path, workflow_file, branch=None, alt="Status"):
-    """
-    Markdown for a native GitHub Actions status badge — the SVG GitHub itself
-    renders from a workflow's real run history, not something we compute or
-    ever need to refresh by hand:
-    https://docs.github.com/actions/how-tos/monitor-workflows/add-a-status-badge
-
-    `branch`, when given, scopes the badge to that branch's own latest run
-    (`?branch=`) — this is what lets each mod branch's README show whether
-    *that* branch, specifically, last passed `branch-sync-check.yaml`.
-    """
-    base = f"https://github.com/{repo_path}/actions/workflows/{workflow_file}"
-    badge_url, link_url = f"{base}/badge.svg", base
-    if branch:
-        encoded = quote(branch, safe="")
-        badge_url += f"?branch={encoded}"
-        link_url += f"?query=branch%3A{encoded}"
-    return f"[![{alt}]({badge_url})]({link_url})"

@@ -1,367 +1,117 @@
-# Agent Development & Modding Guide — OpenGOAL
+# Agent Guide — OpenGOAL Modding Fork
 
-> Unified agent reference. Scope: AI coding agents, maintainers, and mod
-> developers. Source of truth: `master-dev`. Compliance is mandatory across
-> all mod branches (`jak[1-3]/**`).
+Instructions for any AI coding agent working in this repository. Claude Code loads this file
+through `CLAUDE.md`; Codex, Copilot and Cursor read it natively; Gemini CLI reads it through
+`.gemini/settings.json`. Source of truth: `master-dev` of `whozghiar/jak-project`.
 
-## Contents
+## 1. Project
 
-1. [Project Overview & Architecture](#1-project-overview--architecture)
-2. [Dynamic Skills Registry](#2-dynamic-skills-registry-lazy-loaded-knowledge)
-3. [Recording Verified Discoveries](#3-recording-verified-discoveries)
-4. [Documentation Standards](#4-documentation-standards)
-5. [Essential Commands & Taskfile Reference](#5-essential-commands--taskfile-reference)
-6. [CI/CD & GitHub Actions Workflows](#6-cicd--github-actions-workflows)
-7. [Development Cycle (REPL vs Cold Boot)](#7-development-cycle-repl-hot-reload-vs-cold-boot)
-8. [Strict Modding Instructions & Golden Rules](#8-strict-modding-instructions--guardrails)
-9. [Git Branching Strategy & Two-Tier Docs](#9-git-branching-strategy--collaboration)
-10. [Contributing, Issue and PR Guidelines](#10-contributing-issue-and-pr-guidelines)
+OpenGOAL ports the PS2 Jak & Daxter trilogy to native x86-64. `goalc` is the GOAL compiler and
+REPL, `game/` builds the `gk` runtime, `decompiler/` extracts assets and code from the ISO,
+`goal_src/jak[1-3]/` holds the GOAL source, and `custom_assets/` holds texture replacements and
+custom models. This fork adds modding tooling on `master-dev`; every mod is derived from it.
+Architecture details: [`docs/project-overview.md`](docs/project-overview.md).
 
----
+## 2. Skills and knowledge base
 
-## 1. Project Overview & Architecture
+Skills live in [`.agents/skills/`](.agents/skills/), a git submodule of
+[`whozghiar/opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb) shared by
+this repository and every mod repository: one folder per skill with a `SKILL.md`, and the Lisp
+wiki in `.agents/skills/goal-lisp/wiki/`. Gemini CLI, Codex, Copilot and Cursor read
+`.agents/skills/` natively. Claude Code reads `.claude/skills/`, which `task ai-link` fills with
+links; a SessionStart hook refreshes the submodule (`task kb-update`) and the links. Load a skill
+only when its description matches the task.
 
-The OpenGOAL project ports the original Naughty Dog PlayStation 2 trilogy
-(Jak 1 -> Jak 3) to native x86-64 PC applications.
+## 3. Verify before you claim
 
-- **Core language:** over 98% of the original game code is written in GOAL
-  (Game Oriented Assembly Lisp), a custom compiled LISP dialect created by
-  Naughty Dog.
-- **Key components:**
-  1. `goalc` — the OpenGOAL compiler for x86-64 and interactive REPL.
-  2. `game` / `gk` — the C++ game runtime kernel simulating PS2 Emotion
-     Engine RAM via `mmap`.
-  3. `decompiler` — extracts assets and human-readable GOAL source code
-     from retail game assets.
-  4. `goal_src/` — all GOAL / GOOS source code organized by game (`jak1/`,
-     `jak2/`, `jak3/`).
-  5. `custom_assets/` — texture replacements
-     (`custom_assets/jak[x]/texture_replacements/`) and custom 3D
-     models/animations.
+- **Compile, never launch.** Agents may run `task compile-check` (headless `(mi)` through
+  `goalc --cmd`, no game window), `task build-release-game` and `task build-release-decomp`.
+  Agents never launch the game (`gk`, `task boot-game*`, `task run-game`) and never attach the
+  debugger (`(lt)`, `(dbg)`): give the user the exact command and ask what they see. In Claude
+  Code, a PreToolUse hook (`.claude/hooks/block_game_launch.py`) enforces this.
+- **A cold boot is the final check.** Code hot-reloaded with `(mi)` into a running game can look
+  fine while broken on a clean launch (stale definitions, declaration order, missing `.gp`
+  registration). Ask the user for `task boot-game`, or `task boot-game-retail` for the Mods
+  menu, before calling a gameplay change done.
+- **Register every new `.gc` file** in `goal_src/jak[1-3]/game.gp`, dependent types first.
+- **Saves and settings persist across boots.** A cold boot restores save slot 1
+  (`%APPDATA%/OpenGOAL/jak[x]/saves/`), and toggled cheats and settings stay in
+  `%APPDATA%/OpenGOAL/jak[x]/settings/pc-settings.gc`. Account for both when testing.
 
-Objectives: deliver a native x86-64 application with high performance (no
-emulation, interpretation, or transpilation); maintain near-instant live
-code modification while the game is running via the REPL; provide a
-modular, non-regressive modding architecture.
+## 4. Golden rules for mods
 
----
-
-## 2. Dynamic Skills Registry (Lazy-Loaded Knowledge)
-
-To avoid context saturation, agents should not read every reference file
-at startup. Load specialized skills on demand based on the task:
-
-### Skill: GOAL Lisp & Syntax
-- **Trigger:** writing or debugging GOAL code (`.gc`), state machines
-  (`defstate`, `defbehavior`), types, or macros.
-- **Path:** [`.agents/skills/goal-lisp/SKILL.md`](.agents/skills/goal-lisp/SKILL.md)
-  — conceptual reference; every code example lives in the Lisp wiki
-  (`docs/modding/lisp_instructions.md`).
-
-### Skill: Engine Internals & REPL Workflow
-- **Trigger:** engine architecture, C++ runtime (`gk`), compiler (`goalc`),
-  decompiler, REPL lifecycle, heap/memory management, Taskfile builds.
-- **Path:** [`.agents/skills/engine-internals/SKILL.md`](.agents/skills/engine-internals/SKILL.md)
-  and [`.agents/skills/engine-internals/repl-workflow.md`](.agents/skills/engine-internals/repl-workflow.md).
-
-### Skill: Custom Actors, 3D Assets & Rig Adapter
-- **Trigger:** adding `.glb` models, armatures, joint channels, Blender
-  imports/MCP, character/enemy adaptation and backporting between Jak games
-  (Jak 1, 2, 3), armature retargeting, non-destructive textures,
-  animations, custom entities, sound banks (SBK), or new actors/levels.
-- **Path:** [`.agents/skills/custom-actors-levels/SKILL.md`](.agents/skills/custom-actors-levels/SKILL.md).
-
-### Skill: Texture Modding
-- **Trigger:** texture replacement, texture pages (`tpage`), texture
-  dumps/injection, and texture merging.
-- **Path:** [`.agents/skills/texture-modding/SKILL.md`](.agents/skills/texture-modding/SKILL.md).
-
-### Skill: Documentalist
-- **Trigger:** writing, updating, or auditing any `.md` documentation file
-  in the repository.
-- **Path:** [`.agents/skills/documentalist/SKILL.md`](.agents/skills/documentalist/SKILL.md).
-
----
-
-## 3. Recording Verified Discoveries
-
-When you identify an undocumented GOAL syntax pattern, a language trap, or
-the resolution of an engine crash during mod development, land it directly
-in the Lisp wiki (`docs/modding/lisp_instructions.md`) — not in a separate
-memory or scratch file:
-
-```bash
-task modding-land-doc -- --file docs/modding/lisp_instructions.md --message "jak2: <description>" --push
-task modding-sync-docs
-```
-
-An engine fact with no GOAL code attached (a build quirk, a launcher
-packaging requirement, a memory constant) belongs in the wiki's "Engine
-model" section (Part 1.3) if it's shared by all three games, or in the
-relevant skill's `SKILL.md` if
-it's specific to that skill's domain. No skill folder should carry a
-loose, ever-growing discoveries log — fold a verified fact into the
-document that actually owns that topic.
-
----
-
-## 4. Documentation Standards
-
-> [!IMPORTANT]
-> Every documentation file (`.md`) created or updated across the project
-> must follow these rules. The [`documentalist`](.agents/skills/documentalist/SKILL.md)
-> skill is the operational checklist for this section — load it before any
-> non-trivial documentation edit.
-
-1. **English only.** No bilingual sections, no French mirror. This
-   supersedes any earlier bilingual EN/FR requirement.
-2. **Concise and tutorial-toned.** Short paragraphs, one concept per
-   section, tables over prose for key-to-value mappings, worked examples
-   over abstract description. Avoid AI-sounding filler phrases.
-3. **Clearly separated themes.** Every document states its scope in its
-   first paragraph and stays inside it.
-4. **No superfluous icons.** Plain markdown headings and lists. Keep
-   GitHub's semantic admonitions (`[!NOTE]`, `[!IMPORTANT]`, `[!TIP]`) —
-   those are functional, not decorative.
-5. **GOAL/Lisp code lives only in the Lisp wiki.** Fenced GOAL/Lisp code
-   examples belong exclusively in `docs/modding/lisp_instructions.md`.
-   Everywhere else — skills, guides, mod READMEs — describe the
-   pattern in prose and link to its entry in the wiki. The only exception
-   is a `.gc` template file meant to be copied (e.g.
-   `docs/modding/templates/mod_menu.template.gc`), which is a code
-   artifact, not narrative documentation.
-6. **Verified-true content only.** Never invent an instruction, API, path,
-   or task. Check against the actual repository before writing a fact
-   down.
-
----
-
-## 5. Essential Commands & Taskfile Reference
-
-Task automation is driven by [Taskfile](https://taskfile.dev/). For a full
-pedagogical explanation of every task, see
-[Task Commands & Modding Scripts Reference](docs/modding/guides/task_scripts_reference.md).
-
-```bash
-# Game selection
-task set-game-jak1          # Switch active target game to Jak 1
-task set-game-jak2          # Switch active target game to Jak 2
-task set-game-jak3          # Switch active target game to Jak 3
-
-# Building & compilation (3-layer rule)
-task gen-cmake-release      # Configure CMake (Ninja + Clang); auto-wires sccache if installed
-task build-release          # Build ALL ~20 binaries (first setup / full check)
-task build-release-game     # Build ONLY gk + goalc -- fast iteration for engine/compiler C++
-task build-release-decomp   # Build ONLY the decompiler -- use after changing decompiler/
-task build-debug            # Debug equivalents: build-debug-game, build-debug-decomp
-task extract                # Extract assets and run decompiler (offline asset baking)
-
-# Interactive REPL & hot reload (GOAL .gc edits need NO C++ build)
-task repl                   # Open interactive goalc compiler
-# Inside REPL:
-(mi)                        # Incremental compile & hot reload active project into running game
-
-# Game execution
-task boot-game               # Boot game directly in debug mode
-task boot-game-retail        # Boot game in retail mode (-boot -fakeiso) to test Mods Menu (L3 + SELECT)
-task run-game                # Run game with REPL attached
-task format                  # Format C++ and GOAL code
-
-# Modding workflow wrappers (scripts/modding/*.py -- pass args after `--`)
-task modding-new-branch -- jak2/features/my-mod   # Create new mod branch from master-dev + README template
-task modding-sync-branch                          # Your branch only: safe git merge of master-dev into it
-task modding-sync-docs                            # Pull docs/modding + AGENTS.md + CLAUDE.md from master-dev
-task modding-land-doc -- --file docs/modding/lisp_instructions.md --message "..." --push
-task modding-branch-status                        # Every mod branch: test/refresh sync status
-task modding-audit                                 # Regenerate the local branch compliance report
-task modding-sync-catalog                          # Regenerate master-dev root index.json from published releases
-task modding-package-texture-pack                  # Register GUI texture pack .zip into index.json
-task modding-register-texture-pack                 # Alias for modding-package-texture-pack
-task modding-texture-gui                           # Launch OpenGOAL Texture Pack Generator GUI desktop app
-```
-
-> [!IMPORTANT]
-> **Task execution policy:** agents must never run long-running build or
-> runtime `task` commands silently in the background without an explicit
-> user request. Always propose the exact command for the user to run in
-> their terminal.
-
----
-
-## 6. CI/CD & GitHub Actions Workflows
-
-The repository relies on 10 specialized GitHub Actions workflows. For the
-full trigger and behavior detail, see
-[GitHub Actions Workflows Guide](docs/modding/guides/github_workflows.md).
-
-Six of the ten (any workflow that pushes, releases, or spends real CI
-minutes) are restricted to the repository owner specifically, not just
-"anyone with write access" — see the guide's Access Control section. The
-remaining four (`branch-sync-check.yaml`, `lint.yml` on push; `mod-bug-triage.yml`,
-`mod-suggestion-triage.yml` on issues) are deliberately left open: the two
-triage workflows exist to react to community-submitted issues, and the two
-push-triggered checks are already scoped by GitHub's own write-access
-requirement for `push`.
-
-1. `sync-upstream.yaml` (owner only) — daily sync from upstream OpenGOAL
-   into `master` and `master-dev` only; does not touch mod branches.
-2. `sync-branch-with-master-dev.yml` (owner only) — manual, single-branch
-   merge of `master-dev` on demand; the only way a mod branch gets
-   `master-dev`'s changes now that `sync-upstream.yaml` no longer
-   auto-merges branches.
-3. `branch-sync-check.yaml` — lightweight ancestry check that drives each
-   mod branch's status badge.
-4. `lint.yml` — fast source checks (whitespace, forbidden asserts,
-   translation chars) on every push, on every branch.
-5. `build.yml` (owner only) — manual compile check (gk/goalc/extractor,
-   Windows+Linux) usable from any branch, no packaging.
-6. `release.yml` (owner only) — manual trigger that builds and publishes a
-   mod release, usable from any branch.
-7. `mod-bug-report-sync.yml` (owner, or `release.yml`'s own automation) —
-   keeps the bug report form's mod dropdown aligned with published releases.
-8. `mod-bug-triage.yml` — auto-labels bug report issues by game and mod.
-9. `mod-suggestion-triage.yml` — auto-labels community mod suggestions.
-10. `sync-global-catalog.yml` (owner, or `release.yml`'s own automation) —
-    rebuilds the root `index.json` launcher catalog from published releases,
-    master-dev only.
-
----
-
-## 7. Development Cycle: REPL Hot-Reload vs Cold Boot
-
-### The hot-reload cycle
-- When editing `.gc` files, you do not rebuild C++ executables.
-- In the `goalc` REPL, run `(mi)` to incrementally compile and inject
-  updated functions and states directly into the running game memory.
-
-### The "ghost memory" trap & cold boot verification
-- **The danger:** when code is hot-reloaded via `(mi)`, previous
-  definitions, symbols, and old structure layouts linger in the simulated
-  PS2 memory.
-- If you alter structure field layouts, reorder declarations, or introduce
-  forward references, your code may appear to work in the active REPL
-  session while actually being broken on a clean launch.
-- **Mandatory cold boot rule:** always validate modifications with a clean
-  cold start before concluding:
-  ```bash
-  task boot-game
-  ```
-  Cold compilation validates proper declaration order, ensures `.gp`
-  project registration is complete, and guarantees no residual memory
-  corruption.
-
-### Project file registration (`.gp`)
-Whenever you add a new `.gc` source file, register it in the corresponding
-game project file:
-- Jak 1: `goal_src/jak1/game.gp`
-- Jak 2: `goal_src/jak2/jak2-game.gp`
-- Jak 3: `goal_src/jak3/jak3-game.gp`
-
-Ensure that dependent type files are listed before files that consume
-them.
-
-### Default save slot 1 & settings/cheats persistence
-- **Default auto-load:** when the game boots (cold boot), OpenGOAL
-  automatically restores Save Slot 1 by default if a save file exists
-  (`%APPDATA%/OpenGOAL/jak[x]/saves/BASCUS-.../bank0.bin`). To test fresh,
-  unprogressed behavior, start a new game or temporarily clear/rename Slot
-  1.
-- **Persistent PC settings & cheats:** OpenGOAL settings and toggled
-  cheats (e.g. `city-peace`, `turbo-board`, `music-player`) are saved to
-  `%APPDATA%/OpenGOAL/jak[x]/settings/pc-settings.gc`. Once a cheat is
-  enabled, it stays active across subsequent launches until toggled off
-  in-game or cleared from the file.
-
----
-
-## 8. Strict Modding Instructions & Guardrails
-
-All mod development must adhere to the conventions documented in this
-guide and the specialized skills in [`.agents/skills/`](.agents/skills/).
-
-### Golden Rules
-
-1. **Consult reference docs first.**
-   - [`docs/modding/lisp_instructions.md`](docs/modding/lisp_instructions.md) —
-     the Lisp wiki, the only place GOAL/Lisp code examples live in this
-     repository. Never hallucinate or invent an instruction. Part 1 covers
-     memory heaps, DGOs, and process lifecycle, shared by all three games.
-2. **Native non-regression.** A mod must not alter default game behavior
-   unless explicitly requested. All behavior changes must ship off by
-   default, gated behind the mod's runtime toggle.
-3. **In-game Mods toggle mandatory (especially for `features/*`).** Every
-   new mod — without exception for any `features/*` mod — must register an
-   in-game toggle in the unified Mods menu. This is what lets a player
-   enable or disable a mod's changes at runtime while the mod itself
-   touches the minimum possible amount of vanilla code: the toggle, not a
-   direct edit to shared files, is what should gate new behavior.
-   - The mod must be switchable on/off at runtime from a retail boot (the
-     default launcher boot mode), not only in debug mode.
-   - Jak 2 / Jak 3: the Mods menu opens in-game with L3 + SELECT in both
-     retail and debug boots. See
-     [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md)
-     and the template
+1. **Consult the Lisp wiki first.** [`.agents/skills/goal-lisp/wiki/`](.agents/skills/goal-lisp/wiki/index.md)
+   is the only place GOAL code examples live. Never invent an instruction.
+2. **Native non-regression.** A mod must not change default game behavior unless asked: every
+   change ships off by default, gated behind the mod's runtime toggle.
+3. **In-game Mods toggle mandatory** for every `features/*` mod, switchable from a retail boot.
+   - Jak 2 / Jak 3: the Mods menu opens with L3 + SELECT. See
+     [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md) and
      [`docs/modding/templates/mod_menu.template.gc`](docs/modding/templates/mod_menu.template.gc);
-     the exact registration call is in each game's Lisp wiki.
-   - Never edit shared menu files directly, and never mark your own menu
-     file as debug-only — a debug segment is not linked in a retail boot.
-   - Jak 1: prefix submenus cleanly with the mod slug, and document in the
-     mod README that the toggle is debug-only.
-   - **Audit enforcement:** any `features/*` branch lacking an active
-     Mods-menu registration is considered non-compliant and will be
-     flagged by `task modding-audit`.
-4. **Mandatory in-code comments.** Every function, method, state, hook,
-   and type modification in `.gc` must be thoroughly commented (purpose,
-   arguments, return values, side effects).
-5. **Non-destructive modifications.** Never delete or destructively wipe
-   original `.gc` files; favor surgical overrides and modular extensions.
-6. **Traceability of changes.** Document all changes in the mod branch's
-   root `README.md` ("Modding Changes Log") and, for anything with a
-   deeper technical story, in a Tier-2 note under `docs/modding/current_mod/`.
+     the registration call is in the Lisp wiki.
+   - Never edit shared menu files, and never mark your menu file debug-only (a debug segment is
+     not linked in a retail boot).
+   - Jak 1: the toggle is debug-only. Prefix submenus with the mod slug and say so in the mod
+     README.
+4. **Mandatory in-code comments.** Comment every function, method, state, hook and type change in
+   `.gc` (purpose, arguments, return values, side effects).
+5. **Non-destructive changes.** Never delete or wipe original `.gc` files; prefer surgical
+   overrides and modular extensions. Never reformat a whole upstream `.gc` file: it trips the
+   `og:preserve-this` lint and buries the real diff.
+6. **Traceability.** Log every change in the mod's root `README.md` ("Modding Changes Log"); put
+   deeper technical notes in `docs/modding/current_mod/<slug>_readme.md`.
 
----
+## 5. Recording verified discoveries
 
-## 9. Git Branching Strategy & Collaboration
+A verified GOAL pattern, language trap, engine behavior or crash fix that could help another mod
+goes into the knowledge base, never into a separate memory or scratch file. Follow the `kb` skill:
+find the existing entry, edit it in place, cite the evidence, then commit and push from the
+`.agents/skills` submodule. Notes about the current mod alone stay in its `README.md` and
+`docs/modding/current_mod/`.
 
-- `master`: clean mirror of `open-goal/jak-project:master`. Never commit
-  directly to `master`.
-- `master-dev`: integration and modding base branch. All new mod branches
-  must branch from `master-dev`.
-- **Branch naming convention:**
-  ```text
-  jak[N]/[type_of_mod]/[mod_name]
-  ```
-  (e.g. `jak2/features/jak3-jetBoard`, `jak1/features/green-eco-glow`)
-- **Two-tier mod documentation architecture:**
-  1. **Tier 1 — root `README.md` (user & player-facing):** initialized
-     from the template
-     ([`docs/modding/templates/MOD_README.template.md`](docs/modding/templates/MOD_README.template.md)).
-     Player-accessible info: overview, features, setup, controls
-     (L3 + SELECT), video demo, cover thumbnail, changes log.
-  2. **Tier 2 — `docs/modding/current_mod/<slug>_readme.md` (technical
-     deep-dive):** dedicated in-depth engineering documentation for
-     developers and AI agents, referencing the Lisp wiki for any GOAL code
-     rather than repeating it.
-- **Recording verified discoveries conflict-free:** the Lisp wiki
-  (`docs/modding/lisp_instructions.md`) has one source of truth:
-  `master-dev`. Never edit it directly on a mod branch — land discoveries
-  using:
-  ```bash
-  task modding-land-doc -- --file docs/modding/lisp_instructions.md --message "jak2: <description>" --push
-  task modding-sync-docs
-  ```
+## 6. Documentation standards
 
----
+English only; concise and tutorial-toned; one scope per document, stated in its first paragraph;
+no decorative icons (GitHub admonitions are fine); GOAL code only in the Lisp wiki, except `.gc`
+templates meant to be copied; verified facts only. The `documentalist` skill is the full
+checklist.
 
-## 10. Contributing, Issue and PR Guidelines
+## 7. Commands and CI
 
-- **AI disclosure:** always disclose the usage of AI in any communication
-  (commits, PRs, comments, issues) by appending `(AI-assisted)` to all
-  messages.
-- **Safety policy:** never delete or overwrite existing source files
-  without explicit agreement.
-- **No autonomous issues or PRs:** never create an issue or PR
-  automatically.
-- If asked by a user to create an issue or PR, add to the diff a note
-  stating that it was made via an AI agent and likely has not been
-  reviewed by a human.
+`task --list` shows every task, and
+[`docs/modding/guides/task_scripts_reference.md`](docs/modding/guides/task_scripts_reference.md)
+explains them. The ones agents need most:
+
+```bash
+task set-game-jak2          # select the active game (jak1, jak2, jak3)
+task compile-check          # headless GOAL compile of the active game
+task build-release-game     # rebuild gk + goalc after C++ changes
+task build-release-decomp   # rebuild the decompiler after decompiler/ changes
+task modding-sync-branch    # merge master-dev into the current mod branch
+```
+
+Workflows live in `.github/workflows/`;
+[`docs/modding/guides/github_workflows.md`](docs/modding/guides/github_workflows.md) documents
+their triggers and access control. Workflows that only make sense in the mother repository are
+guarded with `github.repository == 'whozghiar/jak-project'`.
+
+## 8. Git
+
+- `master` mirrors `open-goal/jak-project`. Never commit to it.
+- `master-dev` is the modding base. Every mod starts from it.
+- **One repository per mod:** `whozghiar/<game>-<slug>`, the slug being the mod's launcher
+  catalog key. `task modding-new-mod -- --new jak2/<slug>` creates one;
+  `-- --from-branch <branch>` moves a mod branch into one. In a mod repository,
+  `task modding-sync-branch -- --remote mother` merges the latest `master-dev`.
+- Mods not moved yet live on branches of this repository named `jak[N]/[type]/[slug]`; sync them
+  with `task modding-sync-branch`.
+- A mod has two documentation tiers: the root `README.md` for players (from
+  [`docs/modding/templates/MOD_README.template.md`](docs/modding/templates/MOD_README.template.md))
+  and `docs/modding/current_mod/<slug>_readme.md` for developers and agents.
+
+## 9. Contributing
+
+- Append `(AI-assisted)` to every commit, PR, issue or comment written with AI.
+- Never delete or overwrite existing source files without explicit agreement.
+- Never open an issue or PR on your own. When asked to, state in it that an AI agent made it and
+  that a human may not have reviewed it.

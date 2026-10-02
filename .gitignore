@@ -81,8 +81,9 @@ __pycache__/
 # backup files from OpenMaya
 *.bak
 
-# generated compliance report (task modding-audit) -- regenerate locally, no longer tracked
-docs/modding/branch_audit.md
+# Claude Code skills: links to .agents/skills/ created by `task ai-link`
+/.claude/skills/*
+!/.claude/skills/README.md
 
 # docs
 /jak1-*.json

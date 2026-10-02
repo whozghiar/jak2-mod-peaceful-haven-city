@@ -1,26 +1,33 @@
 #!/usr/bin/env python3
 """
-Synchronize a mod branch with master-dev.
+Synchronize a mod with master-dev.
+
+Works on the checkout you run it from:
+- a mod branch of whozghiar/jak-project (merges origin/master-dev), or
+- a mod repository (merges master-dev from its `mother` remote, added on first use).
 
 By default, this script uses `git merge` (safe, non-destructive, preserves commit SHAs
 for published branches). It also offers an explicit `--rebase` option for developers
 who prefer a linear commit history on unshared/local branches.
 
 Usage:
-    python scripts/modding/sync_branch_with_master_dev.py                # Merge master-dev into current branch
-    python scripts/modding/sync_branch_with_master_dev.py --rebase       # Rebase current branch onto master-dev
-    python scripts/modding/sync_branch_with_master_dev.py --push         # Merge and push to origin
-    python scripts/modding/sync_branch_with_master_dev.py --branch jak2/features/foo  # Target specific branch
+    python scripts/modding/sync_branch_with_master_dev.py                  # Merge origin/master-dev into the current branch
+    python scripts/modding/sync_branch_with_master_dev.py --remote mother  # In a mod repository: merge mother/master-dev
+    python scripts/modding/sync_branch_with_master_dev.py --rebase         # Rebase the current branch onto master-dev
+    python scripts/modding/sync_branch_with_master_dev.py --push           # Merge and push to origin
+    python scripts/modding/sync_branch_with_master_dev.py --branch jak2/features/foo  # Target a specific branch
 """
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
 import sync_common
 
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+MOTHER_URL = "https://github.com/whozghiar/jak-project.git"
+
 
 def run_cmd(cmd, check=True, capture=True):
     print(f">> Running: {cmd}")
@@ -41,23 +48,66 @@ def run_cmd(cmd, check=True, capture=True):
         sys.exit(res.returncode)
     return res
 
+
+def find_repo_root():
+    """The checkout this script runs against: the git toplevel of the current directory."""
+    res = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if res.returncode != 0:
+        print("Error: run this script from inside a git checkout.", file=sys.stderr)
+        sys.exit(1)
+    return res.stdout.strip()
+
+
+REPO_ROOT = find_repo_root()
+
+
+def git_quiet(*args):
+    """Run git without a shell, ignoring failures. Shell redirections such as 2>/dev/null
+    do not exist in cmd.exe, which Python uses for shell=True on Windows."""
+    return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
+
+
+def drop_path(path):
+    """Remove a path from the merge result, whether git still tracks it or not."""
+    git_quiet("rm", "-r", "-q", "-f", "--", path)
+    full = os.path.join(REPO_ROOT, path)
+    if os.path.isdir(full) and not os.path.islink(full):
+        shutil.rmtree(full)
+    elif os.path.lexists(full):
+        os.remove(full)
+    git_quiet("add", "-A", "--", path)
+
+
 def get_current_branch():
     res = run_cmd("git rev-parse --abbrev-ref HEAD", check=False)
     if res.returncode == 0:
         return res.stdout.strip()
     return None
 
+
 def is_working_tree_clean():
-    res = run_cmd("git status --porcelain", check=False)
+    res = run_cmd("git status --porcelain --ignore-submodules=all", check=False)
     return len(res.stdout.strip()) == 0
+
 
 def is_ancestor(ancestor_ref, target_ref):
     res = run_cmd(f"git merge-base --is-ancestor {ancestor_ref} {target_ref}", check=False)
     return res.returncode == 0
 
+
+def ensure_remote(name):
+    """A mod repository reaches master-dev through a `mother` remote; add it on first use."""
+    if run_cmd(f"git remote get-url {name}", check=False).returncode != 0:
+        if name != "mother":
+            print(f"Error: remote '{name}' does not exist.", file=sys.stderr)
+            sys.exit(1)
+        run_cmd(f"git remote add mother {MOTHER_URL}")
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Synchronize the current (or specified) branch with origin/master-dev."
+        description="Synchronize the current (or specified) branch with master-dev."
     )
     parser.add_argument(
         "--branch",
@@ -78,7 +128,27 @@ def main():
         default="master-dev",
         help="Source base branch to synchronize from (default: master-dev)."
     )
+    parser.add_argument(
+        "--remote",
+        default="origin",
+        help="Remote that holds the source branch: origin for a mod branch of jak-project, "
+             "mother for a mod repository (added automatically). Default: origin."
+    )
+    parser.add_argument(
+        "--local-source",
+        action="store_true",
+        help="Merge the local source branch as-is, without fetching (used by create_mod_repo.py)."
+    )
+    parser.add_argument(
+        "--mod-repo",
+        action="store_true",
+        help="Apply the mod repository rules (only release.yml, lint.yml and build.yml are kept). "
+             "Implied when --remote is not origin."
+    )
     args = parser.parse_args()
+    mod_repo = args.mod_repo or args.remote != "origin"
+    allowed_workflows = (sync_common.ALLOWED_MOD_REPO_WORKFLOWS if mod_repo
+                         else sync_common.ALLOWED_MOD_BRANCH_WORKFLOWS)
 
     # Determine target branch
     target_branch = args.branch.strip() if args.branch else get_current_branch()
@@ -87,15 +157,17 @@ def main():
         sys.exit(1)
 
     source_branch = args.source.strip()
-    source_ref = f"origin/{source_branch}"
+    source_ref = source_branch if args.local_source else f"{args.remote}/{source_branch}"
 
     if target_branch == source_branch:
         print(f"Error: Target branch cannot be the source base branch '{source_branch}'.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\n=== Synchronizing Branch with {source_branch} ===")
+    print(f"\n=== Synchronizing with {source_ref} ===")
+    print(f"Checkout     : {REPO_ROOT}")
     print(f"Target Branch: {target_branch}")
     print(f"Source Base  : {source_ref}")
+    print(f"Mode         : {'mod repository' if mod_repo else 'mod branch'}")
     print(f"Strategy     : {'REBASE (linear history)' if args.rebase else 'MERGE (safe, preserves SHAs)'}")
 
     # Check cleanliness
@@ -106,8 +178,10 @@ def main():
         sys.exit(1)
 
     # Fetch source
-    print(f"\nFetching latest {source_ref}...")
-    run_cmd(f"git fetch origin {source_branch}")
+    if not args.local_source:
+        ensure_remote(args.remote)
+        print(f"\nFetching latest {source_ref}...")
+        run_cmd(f"git fetch {args.remote} {source_branch}")
 
     # Switch to target branch if not already on it
     current_branch = get_current_branch()
@@ -141,51 +215,47 @@ def main():
         # Ensure 'ours' merge driver is enabled for .gitattributes protection
         run_cmd("git config merge.ours.driver true", check=False)
 
-        merge_res = run_cmd(f'git merge {source_ref} --no-commit', check=False)
+        run_cmd(f'git merge {source_ref} --no-commit', check=False)
 
-        # Auto-resolve deterministic documentation and workflow rules (same rule
-        # table the CI fan-out uses — see sync_common.classify_conflict_path)
+        # Auto-resolve the deterministic documentation and workflow rules
+        # (see sync_common.classify_conflict_path)
         unmerged_res = run_cmd("git diff --name-only --diff-filter=U", check=False)
         unmerged = [l.strip() for l in unmerged_res.stdout.splitlines() if l.strip()]
-        if unmerged:
-            for f in unmerged:
-                action = sync_common.classify_conflict_path(f)
-                if action == "ours":
-                    run_cmd(f'git checkout HEAD -- "{f}" 2>/dev/null || true', check=False)
-                    run_cmd(f'git add "{f}"', check=False)
-                elif action == "theirs":
-                    run_cmd(f'git checkout MERGE_HEAD -- "{f}" 2>/dev/null || true', check=False)
-                    run_cmd(f'git add "{f}"', check=False)
-                elif action == "drop":
-                    run_cmd(f'git rm -rf "{f}" 2>/dev/null || rm -rf "{f}"', check=False)
+        for f in unmerged:
+            action = sync_common.classify_conflict_path(f, allowed_workflows)
+            print(f"   conflict {f}: {action or 'manual'}")
+            if action == "ours":
+                git_quiet("checkout", "HEAD", "--", f)
+                git_quiet("add", "--", f)
+            elif action == "theirs":
+                if git_quiet("checkout", "MERGE_HEAD", "--", f).returncode:
+                    git_quiet("rm", "-q", "-f", "--", f)  # deleted on master-dev
+                git_quiet("add", "-A", "--", f)
+            elif action == "drop":
+                drop_path(f)
 
-        # CRITICAL: Always ensure mod's root README.md is strictly preserved from HEAD
-        # (prevents Git 3-way merge from silently splicing master-dev's dashboard/hub into mod's README)
-        run_cmd('git checkout HEAD -- README.md 2>/dev/null || true', check=False)
+        # CRITICAL: Always ensure the mod's root README.md is strictly preserved from HEAD
+        # (prevents Git 3-way merge from silently splicing master-dev's hub README into the mod's)
+        git_quiet("checkout", "HEAD", "--", "README.md")
 
-        # master-dev-only files (e.g. the all-branches sync dashboard) ride along on a
-        # clean, no-conflict merge too — strip them back out (see sync_common).
+        # master-dev-only files ride along on a clean, no-conflict merge too:
+        # strip them back out (see sync_common).
         for mdo_path in sync_common.MASTER_DEV_ONLY_PATHS:
             if os.path.isfile(os.path.join(REPO_ROOT, mdo_path)):
                 run_cmd(f'git rm -f -q "{mdo_path}"', check=False)
 
-        # Same deal for any workflow master-dev added that isn't release.yml or
-        # branch-sync-check.yaml: a clean merge carries it in with no conflict to
-        # catch, so it has to be swept out explicitly too (see stray_workflow_files).
-        for wf_path in sync_common.stray_workflow_files(REPO_ROOT):
+        # Same for any workflow this kind of mod does not carry: a clean merge brings
+        # it in with no conflict to catch, so it is swept out explicitly.
+        for wf_path in sync_common.stray_workflow_files(REPO_ROOT, allowed_workflows):
             run_cmd(f'git rm -f -q "{wf_path}"', check=False)
 
         run_cmd('git add README.md', check=False)
 
-        # No README badge to stamp here: this branch's "synced with master-dev?" badge
-        # is a native GitHub Actions status badge (branch-sync-check.yaml), written once
-        # into the README at branch creation. The --push below is what makes it go
-        # green — GitHub renders it live from that workflow's run history.
-
         # Refresh index.json's display metadata only — a routine sync is not a release,
         # so it must never fabricate a draft versions[] entry (see update_mod_catalog.py's
-        # refresh_metadata_only: that used to happen here every single time you synced).
-        run_cmd(f'python "{os.path.join(REPO_ROOT, "scripts", "modding", "update_mod_catalog.py")}" --branch "{target_branch}" --metadata-only', check=False)
+        # refresh_metadata_only).
+        catalog_script = os.path.join(REPO_ROOT, "scripts", "modding", "update_mod_catalog.py")
+        run_cmd(f'python "{catalog_script}" --branch "{target_branch}" --metadata-only', check=False)
         run_cmd('git add index.json', check=False)
 
         # Verify if real source code conflicts remain
@@ -201,23 +271,15 @@ def main():
             print("Or abort with: git merge --abort")
             sys.exit(1)
 
-        commit_msg = (
-            f"chore(sync): align {target_branch} with latest {source_branch}\n\n"
-            f"- Integration of updated release CI workflow (.github/workflows/release.yml)\n"
-            f"  with semantic auto-increment (v1.0.0 -> v1.0.1), variable branch display name,\n"
-            f"  and automatic README overview extraction.\n"
-            f"- Creation of index.json catalog for 1-click install via OpenGOAL Launcher raw.githubusercontent.\n"
-            f"- Integration of latest engine fixes and Jak 3 Debug > Mods registry.\n\n"
-            f"(AI-assisted)"
-        )
-        run_cmd(f'git commit -m "{commit_msg}"')
+        run_cmd(f'git commit -m "chore(sync): merge {source_ref} into {target_branch} (AI-assisted)"')
         print(f"\n[OK] Successfully merged {source_ref} into {target_branch}!")
         if args.push:
             print(f"\nPushing {target_branch} to origin...")
             run_cmd(f"git push origin {target_branch}")
             print(f"[OK] Pushed to origin/{target_branch} successfully.")
 
-    print(f"\nSynchronization completed successfully!")
+    print("\nSynchronization completed successfully!")
+
 
 if __name__ == "__main__":
     main()

@@ -50,6 +50,28 @@ def get_current_branch() -> str:
   return branch if branch else "master-dev"
 
 
+def mod_identity(index_path: Path, repo: str):
+  """Slug and game of the mod held by a mod repository (one GitHub repository per mod).
+
+  The repository's own index.json names exactly one mod: its key is the launcher catalog key,
+  kept verbatim (e.g. `jak3-jetBoard`), and supportedGames[0] is its game. A repository with no
+  catalog yet falls back to its name, `<game>-<slug>` (e.g. `jak2-blue-krimzon-guard`).
+  Returns (None, None) for anything else, such as the mother repository's global catalog.
+  """
+  try:
+    mods = json.loads(index_path.read_text(encoding="utf-8")).get("mods") or {}
+  except (OSError, ValueError):
+    mods = {}
+  if len(mods) == 1:
+    slug, entry = next(iter(mods.items()))
+    games = entry.get("supportedGames") or []
+    return slug, (games[0] if games else None)
+  m = re.match(r"^(jak[123])-(.+)$", repo.split("/")[-1])
+  if m:
+    return m.group(2), m.group(1)
+  return None, None
+
+
 def sanitize_source_name(name: str) -> str:
   """Sanitize a catalog sourceName for safe use as a directory name on Windows and Linux.
 
@@ -277,7 +299,9 @@ def refresh_metadata_only(index_path, mod_id, display_name, description, support
 
   before = json.dumps(mod_entry, sort_keys=True)
 
-  mod_entry["displayName"] = display_name
+  # A sync passes no display name: keep the released one instead of the branch or repository slug.
+  if display_name:
+    mod_entry["displayName"] = display_name
   mod_entry["description"] = description
   mod_entry["supportedGames"] = supported_games
   if cover_url:
@@ -288,7 +312,7 @@ def refresh_metadata_only(index_path, mod_id, display_name, description, support
     print(f"[OK] '{mod_id}' metadata unchanged — {index_path} left as-is.")
     return
 
-  catalog["sourceName"] = sanitize_source_name(display_name)
+  catalog["sourceName"] = sanitize_source_name(mod_entry.get("displayName") or mod_id)
   catalog["lastUpdated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
   with open(index_path, "w", encoding="utf-8") as f:
@@ -506,6 +530,7 @@ def main():
   # Determine target game and variable part of branch
   # Formats: jak[123]/[category]/[variable_part...]
   detected_game = "jak2"
+  repo_slug = None
   branch_match = re.match(r"^jak([123])/([^/]+)/(.+)$", branch)
   if branch_match:
     game_num = branch_match.group(1)
@@ -513,9 +538,17 @@ def main():
     variable_part = branch_match.group(3)
     detected_slug = variable_part.replace("/", "-").replace("_", "-")
   else:
-    parts = branch.split("/")
-    variable_part = parts[-1] if len(parts) > 1 else branch
-    detected_slug = branch.replace("/", "-").replace("_", "-")
+    # A mod repository: its branch (main) names nothing, its own catalog does.
+    repo_slug, repo_game = mod_identity(index_path, args.repo)
+    if repo_slug:
+      variable_part = detected_slug = repo_slug
+      detected_game = repo_game or detected_game
+    else:
+      parts = branch.split("/")
+      variable_part = parts[-1] if len(parts) > 1 else branch
+      detected_slug = branch.replace("/", "-").replace("_", "-")
+  website_url = (f"https://github.com/{args.repo}" if repo_slug
+                 else f"https://github.com/{args.repo}/tree/{branch}")
 
   # Mod metadata resolution
   disp_arg = args.display_name.strip() if args.display_name else ""
@@ -538,7 +571,7 @@ def main():
     refresh_metadata_only(
         index_path=index_path,
         mod_id=args.mod_id or detected_slug,
-        display_name=display_name,
+        display_name=disp_arg or None,
         description=description,
         supported_games=(
             [g.strip() for g in args.supported_games.split(",") if g.strip()]
@@ -664,11 +697,12 @@ def main():
         "authors": authors,
         "tags": ["gameplay", "custom-engine"],
         "supportedGames": supported_games,
-        "websiteUrl": f"https://github.com/{args.repo}/tree/{branch}",
+        "websiteUrl": website_url,
         "versions": [],
     }
 
   mod_entry = catalog["mods"][mod_id]
+  mod_entry["websiteUrl"] = website_url
   mod_entry["displayName"] = display_name
   mod_entry["description"] = description
   mod_entry["supportedGames"] = supported_games

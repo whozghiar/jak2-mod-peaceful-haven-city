@@ -40,8 +40,8 @@ Each technical mod document should adopt a structured, educational approach:
    ingestion.
 3. **What changed and why, described in prose.** Reference the exact GOAL
    syntax involved (a state, a hook, a macro) by name, and link to its
-   entry in the relevant per-game Lisp wiki
-   (`docs/modding/jak[1|2|3]_lisp_instructions.md`) rather than pasting the
+   entry in the Lisp wiki
+   (`.agents/skills/goal-lisp/wiki/`) rather than pasting the
    Lisp code into this document. GOAL/Lisp code examples live only in the
    wiki, so that the same pattern is never explained twice in two places
    that can drift apart.

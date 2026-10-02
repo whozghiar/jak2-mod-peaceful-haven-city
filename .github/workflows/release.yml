@@ -414,17 +414,18 @@ jobs:
         # Creating the release and pushing index.json above both happen with
         # the default GITHUB_TOKEN - GitHub does not let GITHUB_TOKEN-authored
         # actions trigger other workflows' event listeners (it would recurse
-        # otherwise), so sync-global-catalog.yml's and mod-bug-report-sync.yml's
-        # own `on: release:` triggers never actually fire from this job. These
-        # explicit `gh workflow run` calls (workflow_dispatch, not workflow_call
-        # - there is no `uses:` reusable-workflow invocation here) are the real
-        # mechanism that keeps master-dev's catalog and issue-template dropdown
-        # current after every release. Requires `actions: write` above.
+        # otherwise), so sync-global-catalog.yml's own `on: release:` trigger never
+        # actually fires from this job. This explicit `gh workflow run` call
+        # (workflow_dispatch, not workflow_call - there is no `uses:`
+        # reusable-workflow invocation here) is the real mechanism that keeps
+        # master-dev's catalog current after every release. Mod repositories have
+        # no such step: the catalog's daily schedule picks their releases up.
+        # Requires `actions: write` above.
+        # Mother repository only: a mod repository has no master-dev catalog to refresh.
+        if: github.repository == 'whozghiar/jak-project'
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Triggering sync-global-catalog.yml on master-dev..."
           gh workflow run sync-global-catalog.yml --ref master-dev --repo "${{ github.repository }}"
-          echo "Triggering mod-bug-report-sync.yml on master-dev..."
-          gh workflow run mod-bug-report-sync.yml --ref master-dev --repo "${{ github.repository }}"

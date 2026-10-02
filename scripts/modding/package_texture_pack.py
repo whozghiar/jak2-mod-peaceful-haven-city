@@ -331,7 +331,7 @@ def scan_and_register_texture_packs(
   if not zips:
     print(f"[-] No texture pack .zip archive found in {dir_path}")
     print("[!] Please build your texture pack using the OpenGOAL Texture Pack Generator GUI first:")
-    print("      task modding-texture-gui")
+    print("      https://github.com/whozghiar/open-goal-texture-pack-generator")
     print(f"[!] Or export/place your .zip archive inside:\n      {dir_path}")
     print("[!] (To build directly from raw custom_assets/ instead, pass --from-source)")
     return []

@@ -135,6 +135,13 @@ tasks:
         msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
     cmds:
       - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --user-auto --game {{.GAME}}"
+  compile-check:
+    desc: "Compile the active game's GOAL code headless ((mi) through goalc --cmd) and exit. Never starts the game, so agents may run it to verify their work"
+    preconditions:
+      - sh: test -f {{.GOALC_BIN_RELEASE_DIR}}/goalc{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
+    cmds:
+      - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --user-auto --game {{.GAME}} --cmd \"(mi)\""
   format-json:
     desc: "Format code"
     cmds:
@@ -157,35 +164,15 @@ tasks:
       - "{{.FORMATTER_BIN_RELEASE_DIR}}/formatter --write --file '{{.FILE}}'"
   # MODDING WORKFLOW
   # Thin wrappers over scripts/modding/*.py so the mod workflow is discoverable via
-  # `task --list`. Pass script args after `--`, e.g. `task modding-new-branch -- jak2/features/foo`.
-  modding-new-branch:
-    desc: "Create a new mod branch from master-dev with an initialised root README (scripts/modding/create_mod_branch.py). Args after --, e.g. -- jak2/features/my-mod"
+  # `task --list`. Pass script args after `--`, e.g. `task modding-new-mod -- --new jak2/my-mod`.
+  modding-new-mod:
+    desc: "Create a mod repository (GitHub, one per mod) from master-dev, or move a mod branch into one (scripts/modding/create_mod_repo.py). e.g. -- --new jak2/my-mod, or -- --from-branch jak2/features/foo"
     cmds:
-      - "{{.PYTHON}} ./scripts/modding/create_mod_branch.py {{.CLI_ARGS}}"
+      - "{{.PYTHON}} ./scripts/modding/create_mod_repo.py {{.CLI_ARGS}}"
   modding-sync-branch:
-    desc: "Sync the current mod branch with master-dev via safe git merge (scripts/modding/sync_branch_with_master_dev.py). --rebase / --push accepted after --"
+    desc: "Merge master-dev into the current mod (scripts/modding/sync_branch_with_master_dev.py): a mod branch here, or a mod repository with -- --remote mother. --rebase / --push accepted after --"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/sync_branch_with_master_dev.py {{.CLI_ARGS}}"
-  modding-sync-docs:
-    desc: "Pull .agents + docs/modding + AGENTS.md + CLAUDE.md from master-dev into the current branch, pruning files deleted upstream (scripts/modding/sync_docs_from_master.py)"
-    cmds:
-      - "{{.PYTHON}} ./scripts/modding/sync_docs_from_master.py {{.CLI_ARGS}}"
-  modding-land-doc:
-    desc: "Land a lisp/engine doc change on master-dev conflict-free, then re-sync your branch (scripts/modding/land_doc_on_master_dev.py). e.g. -- --file docs/modding/lisp_instructions.md --message '...' --push"
-    cmds:
-      - "{{.PYTHON}} ./scripts/modding/land_doc_on_master_dev.py {{.CLI_ARGS}}"
-  modding-branch-status:
-    desc: "Test every mod branch's mergeability with master-dev (scripts/modding/sync_branches_with_master.py). Add -- --push to auto-merge clean branches"
-    cmds:
-      - "{{.PYTHON}} ./scripts/modding/sync_branches_with_master.py {{.CLI_ARGS}}"
-  modding-audit:
-    desc: "Regenerate docs/modding/branch_audit.md: per-branch compliance with the modding standards (scripts/modding/branch_audit.py)"
-    cmds:
-      - "{{.PYTHON}} ./scripts/modding/branch_audit.py {{.CLI_ARGS}}"
-  modding-sync-bug-report-options:
-    desc: "Refresh the mod-bug-report.yml 'Mod Concerned' dropdown from actually-published GitHub Releases (scripts/modding/sync_bug_report_options.py). Add -- --dry-run to preview"
-    cmds:
-      - "{{.PYTHON}} ./scripts/modding/sync_bug_report_options.py {{.CLI_ARGS}}"
   modding-sync-catalog:
     desc: "Regenerate master-dev root index.json global catalog from published GitHub Releases (scripts/modding/sync_global_catalog.py). Add -- --offline or --dry-run"
     cmds:
@@ -198,10 +185,16 @@ tasks:
     desc: "Alias for modding-package-texture-pack: register texture pack .zip from docs/modding/current_mod/texture_packs/ into index.json"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/package_texture_pack.py {{.CLI_ARGS}}"
-  modding-texture-gui:
-    desc: "Launch the OpenGOAL Texture Pack Generator GUI tool (Tauri v2 desktop app) to preview and package texture packs"
+
+  # AI AGENTS
+  kb-update:
+    desc: "Initialise and fast-forward the knowledge-base submodule .agents/skills (whozghiar/opengoal-modding-kb) without discarding local work (scripts/ai/kb_sync.py)"
     cmds:
-      - "{{.PYTHON}} ./scripts/modding/launch_texture_gui.py {{.CLI_ARGS}}"
+      - "{{.PYTHON}} ./scripts/ai/kb_sync.py {{.CLI_ARGS}}"
+  ai-link:
+    desc: "Expose the shared skills in .agents/skills/ inside each AI tool's own skills folder (.claude/skills/) with directory links (scripts/ai/link_skills.py). Idempotent"
+    cmds:
+      - "{{.PYTHON}} ./scripts/ai/link_skills.py {{.CLI_ARGS}}"
 
   # DECOMPILING
   disasm:

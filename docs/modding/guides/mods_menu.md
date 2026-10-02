@@ -5,7 +5,7 @@
 > exception for `jak[x]/features/*` branches — must register into this menu.
 > Mod features must ship off by default and be toggleable by players at
 > runtime in retail boots via **L3 + SELECT**. The exact registration call
-> is in [`docs/modding/lisp_instructions.md`](../lisp_instructions.md#1211-register-an-in-game-mods-toggle)
+> is in [the Lisp wiki](../../../.agents/skills/goal-lisp/wiki/common.md#1211-register-an-in-game-mods-toggle)
 > (see also [§3](#3-the-standardised-template)) — this file covers the
 > architecture and the pitfalls, not the syntax.
 
@@ -88,7 +88,7 @@ combination — avoid the combinations reserved for speedrunner mode.
 ### Public API
 
 Registering a mod's submenu and forcing a rebuild are both single calls —
-see the [Lisp wiki, "Register an in-game Mods toggle"](../lisp_instructions.md#1211-register-an-in-game-mods-toggle),
+see the [Lisp wiki, "Register an in-game Mods toggle"](../../../.agents/skills/goal-lisp/wiki/common.md#1211-register-an-in-game-mods-toggle),
 for the exact signatures. A builder function takes no argument and returns a menu entry
 (normally a submenu); it may return a false value to hide the mod
 temporarily, e.g. when its level isn't loaded.
@@ -189,7 +189,7 @@ Two independent blockers:
    Jak 2/3).
 2. **The debug root menu is fragile at link time.** Appending an item to
    Jak 1's root debug menu during link-and-exec segfaults the boot
-   reproducibly (see the [Lisp wiki, "The debug root menu is fragile at link time"](../lisp_instructions.md#25-the-debug-root-menu-is-fragile-at-link-time)), so the old
+   reproducibly (see the [Lisp wiki, "The debug root menu is fragile at link time"](../../../.agents/skills/goal-lisp/wiki/jak1.md#25-the-debug-root-menu-is-fragile-at-link-time)), so the old
    debug-menu workaround was already off-limits there too.
 
 Until Jak 1 is ported, Jak 1 mods add a mod-slug-prefixed submenu to their

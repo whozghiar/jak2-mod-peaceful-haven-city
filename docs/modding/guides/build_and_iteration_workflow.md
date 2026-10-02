@@ -1,6 +1,6 @@
 # OpenGOAL — Build & Iteration Workflow (Fast Mod Compilation)
 
-> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — all mod branches
+> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod
 > - **Origin:** `master-dev`
 > - **Related Guides:** [`github_workflows.md`](github_workflows.md) · [`task_scripts_reference.md`](task_scripts_reference.md)
 

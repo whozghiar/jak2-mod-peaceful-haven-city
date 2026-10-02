@@ -3,35 +3,18 @@
 <p align="center">
   <img src="https://img.shields.io/badge/OpenGOAL-Mod-blue.svg" alt="OpenGOAL Mod">
   <img src="https://img.shields.io/badge/Game-{GAME_BADGE}-orange.svg" alt="Target Game">
-  <img src="https://img.shields.io/badge/Branch-{BRANCH_BADGE}-green.svg" alt="Branch">
   <img src="https://img.shields.io/badge/AI--assisted-Modding-purple.svg" alt="AI Assisted">
 </p>
-
-<p align="center">
-
-{SYNC_BADGE}
-
-</p>
-
-> [!NOTE]
-> The badge above is a native **GitHub Actions status badge** for
-> [`branch-sync-check.yaml`](https://github.com/{REPO_PATH}/actions/workflows/branch-sync-check.yaml),
-> scoped to this branch — GitHub renders it live from that workflow's own run history,
-> nothing generates or rewrites this image by hand. It goes green the moment this branch
-> next merges `master-dev` cleanly (usually via the daily automated sync), and can turn
-> red if someone pushes commits here without syncing first. It cannot turn red purely
-> because `master-dev` moved on without a new push landing here — run `task modding-branch-status`
-> or check GitHub Actions to audit fleet-wide mergeability.
 
 > **Contents:** [Overview](#overview) · [Key Features](#key-features) · [Download & Play](#download--play-via-opengoal-launcher-players) · [Developer Setup](#developer-setup--local-compilation) · [Demo Video](#demonstration-video) · [Compliance Checklist](#compliance-checklist) · [Technical Documentation](#technical-documentation)
 
 ---
 
 ## Overview
-Brief, simple description of what this mod introduces or modifies in the game.
+{MOD_DESCRIPTION}
 
 - **Target Game:** {TARGET_GAME}
-- **Active Branch:** `{BRANCH_NAME}`
+- **Repository:** [`{REPO_PATH}`](https://github.com/{REPO_PATH}), created from the modding base [`whozghiar/jak-project`](https://github.com/whozghiar/jak-project)
 
 ## Key Features
 - **Feature 1:** Simple description of the first key feature.
@@ -47,7 +30,7 @@ Brief, simple description of what this mod introduces or modifies in the game.
 1. In the **OpenGOAL Launcher**, navigate to **Settings ▸ Mods ▸ Add Custom Mod Source**.
 2. Paste this catalog URL:
    ```text
-   https://raw.githubusercontent.com/{REPO_PATH}/{BRANCH_NAME}/index.json
+   https://raw.githubusercontent.com/{REPO_PATH}/main/index.json
    ```
 3. Go to the **Mods** tab, locate **{MOD_TITLE}**, and click **Install**.
 4. Select your clean PS2 game ISO when prompted. The launcher will automatically extract assets and launch the game!
@@ -64,6 +47,13 @@ Brief, simple description of what this mod introduces or modifies in the game.
 ## Developer Setup & Local Compilation
 
 If you want to modify or compile this mod locally from source:
+
+### 0. Clone
+The knowledge base used by AI agents is a submodule, so clone with it:
+```bash
+git clone --recurse-submodules https://github.com/{REPO_PATH}.git
+```
+To pull the latest modding base into this mod later, run `task modding-sync-branch -- --remote mother`.
 
 ### 1. Select the Active Game
 Make sure your environment is targeting {TARGET_GAME}:
@@ -110,7 +100,7 @@ task boot-game
 - [ ] **In-game Mods toggle [MANDATORY FOR FEATURES]:** the mod registers at least one enable/disable entry via `(mods-menu-register "{MOD_SLUG}" ...)` (Jak 2 / Jak 3, opens with **L3 + SELECT**, works in a retail boot) or a `{MOD_SLUG}`-prefixed **debug-only** submenu (Jak 1). See [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md).
 - [ ] **No direct `default-menu*.gc` edits.**
 - [ ] **Symbols prefixed** with the mod slug (`*mod-{MOD_SLUG}-*`, `mod-{MOD_SLUG}-*`).
-- [ ] **Verified Lisp instructions** used by this mod are present in `docs/modding/lisp_instructions.md` (landed on `master-dev` via `task modding-land-doc`).
+- [ ] **Verified Lisp instructions** used by this mod are present in the Lisp wiki (`.agents/skills/goal-lisp/wiki/`), recorded with the `kb` skill.
 - [ ] **In-code comments** on every new/overridden type, method, state, macro.
 - [ ] **Mod cover thumbnail:** Optional cover image deposited at `docs/img/mod/mod_cover.png` for OpenGOAL Launcher display.
 

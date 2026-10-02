@@ -98,6 +98,42 @@ def fetch_all_releases(repo: str, token: str):
   return releases
 
 
+# Topic that marks a mod repository (one GitHub repository per mod, created from master-dev
+# by scripts/modding/create_mod_repo.py). Its releases join the catalog next to this repository's.
+MOD_REPO_TOPIC = "opengoal-mod"
+
+
+def discover_mod_repos(owner: str, token: str) -> list[dict]:
+  repos = []
+  page = 1
+  while True:
+    try:
+      batch = fetch_json(f"https://api.github.com/users/{owner}/repos?per_page=100&page={page}", token)
+    except Exception as err:
+      print(f"Warning: could not list {owner}'s repositories: {err}", file=sys.stderr)
+      break
+    if not batch:
+      break
+    repos.extend(r for r in batch if MOD_REPO_TOPIC in (r.get("topics") or []))
+    if len(batch) < 100:
+      break
+    page += 1
+  return repos
+
+
+def mod_repo_entry(full_name: str, token: str) -> tuple[str | None, dict]:
+  """The catalog key a mod repository publishes and its entry: the single mod of its own
+  index.json, or just the `<slug>` of its `<game>-<slug>` name when it has none yet."""
+  try:
+    mods = fetch_json(f"https://raw.githubusercontent.com/{full_name}/HEAD/index.json", token).get("mods") or {}
+  except Exception:
+    mods = {}
+  if len(mods) == 1:
+    return next(iter(mods.items()))
+  m = re.match(r"^jak[123]-(.+)$", full_name.split("/")[-1])
+  return (m.group(1) if m else None), {}
+
+
 def get_git_remote_branches() -> list[str]:
   """List known remote branches for origin/jak*."""
   out = run_cmd("git branch -r")
@@ -214,6 +250,13 @@ def collect_mods_from_releases(repo: str, token: str, offline: bool = False):
   if not releases:
     releases = get_offline_released_mods(remote_branches)
 
+  mod_repos = [] if offline else discover_mod_repos(repo.split("/")[0], token)
+  for mod_repo in mod_repos:
+    print(f"Fetching published releases for mod repository {mod_repo['full_name']}...")
+    for rel in fetch_all_releases(mod_repo["full_name"], token):
+      rel["_repo"] = mod_repo["full_name"]
+      releases.append(rel)
+
   print(f"Found {len(releases)} published release(s). Aggregating catalogs...")
 
   aggregated_mods = {}
@@ -248,7 +291,8 @@ def collect_mods_from_releases(repo: str, token: str, offline: bool = False):
       m_tag = re.match(r"^([a-zA-Z0-9_\-]+?)-v\d+", tag)
       if m_tag:
         canonical_slug = m_tag.group(1).replace("_", "-")
-        branch = find_branch_for_slug(canonical_slug, remote_branches)
+        # A mod repository's release carries its own catalog; its old branch here is history.
+        branch = None if "_repo" in rel else find_branch_for_slug(canonical_slug, remote_branches)
 
     # 1. Load data from release asset (if available)
     rel_catalog = load_catalog_from_release_asset(rel, token)
@@ -370,6 +414,16 @@ def collect_mods_from_releases(repo: str, token: str, offline: bool = False):
             aggregated_texture_packs[tp_key][attr] = tp_info[attr]
 
     print(f"  ✓ {tag}: aggregated successfully")
+
+  # A mod repository's own index.json is the source of truth for its name and description,
+  # and players are sent to the repository, even before its first release from there.
+  for mod_repo in mod_repos:
+    slug, entry = mod_repo_entry(mod_repo["full_name"], token)
+    if slug in aggregated_mods:
+      for attr in ("displayName", "description"):
+        if entry.get(attr):
+          aggregated_mods[slug][attr] = entry[attr]
+      aggregated_mods[slug]["websiteUrl"] = mod_repo["html_url"]
 
   return aggregated_mods, aggregated_texture_packs
 

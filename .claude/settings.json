@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(task compile-check *)",
+      "PowerShell(task compile-check *)",
+      "Bash(task build-release-game *)",
+      "PowerShell(task build-release-game *)",
+      "Bash(task build-release-decomp *)",
+      "PowerShell(task build-release-decomp *)",
+      "Bash(task ai-link *)",
+      "PowerShell(task ai-link *)"
+    ],
+    "deny": [
+      "Bash(task boot-game *)",
+      "Bash(task boot-game-retail *)",
+      "Bash(task run-game *)",
+      "PowerShell(task boot-game *)",
+      "PowerShell(task boot-game-retail *)",
+      "PowerShell(task run-game *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/scripts/ai/kb_sync.py\" --quiet; python \"$CLAUDE_PROJECT_DIR/scripts/ai/link_skills.py\" --quiet"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/block_game_launch.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

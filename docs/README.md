@@ -24,7 +24,7 @@ docs/
 ## 2. Key Entry Points
 
 ### Modding & AI-Assisted Development
-- **[Lisp Wiki (`docs/modding/lisp_instructions.md`)](modding/lisp_instructions.md)**: verified Lisp instructions — common patterns and engine model in Part 1, each game's specifics in Parts 2-4.
+- **[Lisp Wiki (`.agents/skills/goal-lisp/wiki/`)](../.agents/skills/goal-lisp/wiki/index.md)**: verified Lisp instructions in the knowledge-base submodule — patterns and engine model shared by the three games in `common.md`, each game's specifics in `jak1.md`, `jak2.md` and `jak3.md`.
 - **[AI Agent & Developer Guide (`AGENTS.md`)](../AGENTS.md)**: central rules, Taskfile command reference, REPL hot-reload cycle, ghost memory verification, and git branching standards.
 - **[GitHub Actions Workflows Guide](modding/guides/github_workflows.md)**: detailed pedagogical guide to repository CI/CD, upstream synchronization, releases, and issue triaging.
 - **[Task Commands & Modding Scripts Reference](modding/guides/task_scripts_reference.md)**: pedagogical reference for all Taskfile commands and `scripts/modding/*.py` automations.

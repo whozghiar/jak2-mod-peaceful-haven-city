@@ -1,4 +1,4 @@
-[submodule "docs/modding/tools/open-goal-texture-pack-generator"]
-	path = docs/modding/tools/open-goal-texture-pack-generator
-	url = https://github.com/whozghiar/open-goal-texture-pack-generator.git
-
+[submodule ".agents/skills"]
+	path = .agents/skills
+	url = https://github.com/whozghiar/opengoal-modding-kb.git
+	branch = main

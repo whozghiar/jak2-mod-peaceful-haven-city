@@ -1,6 +1,6 @@
 # OpenGOAL Mod Distribution & Release Guide
 
-> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — all mod branches
+> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod repository (and the mods still on a branch of `whozghiar/jak-project`)
 > - **Origin:** `master-dev`
 > - **Related Guide:** [`github_workflows.md`](github_workflows.md)
 
@@ -62,9 +62,9 @@ For the Launcher to hit zero extraction or local-compile errors, the ZIP archive
 
 ---
 
-## 3. Triggering a Release from a Mod Branch
+## 3. Triggering a Release from a Mod Repository
 
-The `.github/workflows/release.yml` workflow lives on `master-dev` and is synced onto every mod branch.
+The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod repository inherits it and gets its updates with `task modding-sync-branch -- --remote mother`. In a mod repository the mod's catalog key and game come from its own `index.json`, so the release tag is `<slug>-vX.Y.Z` and the launcher keeps seeing the same mod.
 
 > [!IMPORTANT]
 > **`workflow_dispatch` only — no tag trigger.** This workflow does not listen for tag
@@ -79,17 +79,17 @@ The `.github/workflows/release.yml` workflow lives on `master-dev` and is synced
 > players.
 >
 > **Repository owner only.** The workflow checks `github.actor` against the
-> repository owner before doing anything else — write access to push a branch is
+> repository owner before doing anything else — write access to push is
 > not enough to trigger a release. See
 > [GitHub Actions Workflows Guide § Access Control](github_workflows.md#access-control).
 
 ### Triggering it — via GitHub Actions or the `gh` CLI
 
 **Web UI:**
-1. Open your repository on GitHub and go to the **Actions** tab.
+1. Open the mod repository on GitHub and go to the **Actions** tab.
 2. In the left menu, select **🚀 Build & Release OpenGOAL Mod Package**.
 3. Click **Run workflow**:
-   - **Branch:** Pick your active mod branch (e.g. `jak2/features/my-mod`).
+   - **Branch:** `main` (or, for a mod still on a branch here, that branch).
    - **Mod name (`mod_name`):** Mandatory. Display name (e.g. `Jak 3 JetBoard`).
    - **Short description (`mod_description`):** Mandatory. A 1-2 sentence summary embedded as-is into the `index.json` catalog.
    - **Version tag (`tag_name`):** Mandatory. An explicit tag (e.g. `v1.0.0`).
@@ -98,7 +98,7 @@ The `.github/workflows/release.yml` workflow lives on `master-dev` and is synced
 
 **Command line:**
 ```bash
-gh workflow run release.yml --ref jak2/features/my-mod \
+gh workflow run release.yml --repo whozghiar/jak2-my-mod --ref main \
   -f mod_name="Jak 3 JetBoard" \
   -f mod_description="Adds Jak 3's jetboard to Jak 2." \
   -f tag_name="v1.0.0"
@@ -122,17 +122,17 @@ The `scripts/modding/update_mod_catalog.py` script automatically generates an `i
       "authors": ["MyHandle"],
       "tags": ["gameplay", "custom-engine"],
       "supportedGames": ["jak2"],
-      "websiteUrl": "https://github.com/user/repo/tree/jak2/features/my-mod",
-      "coverArtUrl": "https://raw.githubusercontent.com/user/repo/jak2/features/my-mod/docs/img/mod/mod_cover.png",
-      "thumbnailArtUrl": "https://raw.githubusercontent.com/user/repo/jak2/features/my-mod/docs/img/mod/mod_cover.png",
+      "websiteUrl": "https://github.com/user/jak2-my-mod",
+      "coverArtUrl": "https://raw.githubusercontent.com/user/jak2-my-mod/main/docs/img/mod/mod_cover.png",
+      "thumbnailArtUrl": "https://raw.githubusercontent.com/user/jak2-my-mod/main/docs/img/mod/mod_cover.png",
       "versions": [
         {
           "version": "1.0.0",
           "publishedDate": "2026-09-13T15:00:00Z",
           "supportedGames": ["jak2"],
           "assets": {
-            "windows": "https://github.com/user/repo/releases/download/v1.0.0/windows-v1.0.0.zip",
-            "linux": "https://github.com/user/repo/releases/download/v1.0.0/linux-v1.0.0.zip"
+            "windows": "https://github.com/user/jak2-my-mod/releases/download/my-mod-v1.0.0/windows-my-mod-v1.0.0.zip",
+            "linux": "https://github.com/user/jak2-my-mod/releases/download/my-mod-v1.0.0/linux-my-mod-v1.0.0.zip"
           },
           "checksums": {
             "windows": "a1b2c3d4...",
@@ -148,7 +148,7 @@ The `scripts/modding/update_mod_catalog.py` script automatically generates an `i
 
 ### Mod Cover Thumbnail (`mod_cover.png`)
 
-For each mod, you can manually drop a cover thumbnail at `docs/img/mod/mod_cover.png` on the mod's branch. It is automatically detected and injected into `index.json` (`coverArtUrl` and `thumbnailArtUrl`) for visual display in the OpenGOAL Launcher, as well as in GitHub release notes.
+For each mod, you can manually drop a cover thumbnail at `docs/img/mod/mod_cover.png` in the mod repository. It is automatically detected and injected into `index.json` (`coverArtUrl` and `thumbnailArtUrl`) for visual display in the OpenGOAL Launcher, as well as in GitHub release notes.
 
 ### For players:
 In the OpenGOAL Launcher:
@@ -157,11 +157,11 @@ In the OpenGOAL Launcher:
    ```text
    https://raw.githubusercontent.com/whozghiar/jak-project/master-dev/index.json
    ```
-   *(Alternatively, enter an individual mod branch catalog URL: `https://raw.githubusercontent.com/<user>/<repo>/<branch>/index.json`)*
+   *(Alternatively, enter one mod's own catalog URL: `https://raw.githubusercontent.com/<user>/<mod repository>/main/index.json`)*
 3. The mods immediately appear in the **Mods** tab with a 1-click install button!
 
 > [!NOTE]
 > **Automated Master Catalog Maintenance:**
-> The consolidated root catalog is synchronized automatically on every release via the `sync-global-catalog.yml` workflow and the `scripts/modding/sync_global_catalog.py` script (`task modding-sync-catalog`), ensuring zero manual catalog maintenance.
+> The consolidated root catalog is rebuilt by the `sync-global-catalog.yml` workflow (`scripts/modding/sync_global_catalog.py`, `task modding-sync-catalog`): right after each release of this repository, and daily for the releases of mod repositories, which it finds by their `opengoal-mod` topic.
 
 > For a full screenshot-by-screenshot walkthrough (including in-game activation), see ["Installing a Mod (Players)"](../../../README.md#installing-a-mod-players) in the root README.
