@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceName": "peaceful-haven-city Source",
+  "sourceName": "Peaceful Haven City Source",
   "lastUpdated": "2026-10-02T01:41:15Z",
   "mods": {
     "peaceful-haven-city": {
-      "displayName": "peaceful-haven-city",
+      "displayName": "Peaceful Haven City",
       "description": "Adds a blue-recolored Crimson Guard as its own, standalone entity — a new GOAL type (`crimson-blue-guard`) that reuses 100% of the stock `crimson-guard`'s behavior, animations and sounds, only with a re-textured mesh. It appears in Haven City mixed into the normal ambient guard traffic, alongside the regular red guards.",
       "authors": [
         "whozghiar"
@@ -16,7 +16,7 @@
       "supportedGames": [
         "jak2"
       ],
-      "websiteUrl": "https://github.com/whozghiar/jak-project/tree/jak2/features/peaceful-haven-city",
+      "websiteUrl": "https://github.com/whozghiar/jak2-peaceful-haven-city",
       "versions": [
         {
           "version": "1.0.0",
