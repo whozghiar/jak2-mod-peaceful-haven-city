@@ -1,4 +1,4 @@
-# Crimson Blue Guard — Jak 2
+# Peaceful Haven City — Jak 2
 
 <p align="center">
   <img src="https://img.shields.io/badge/OpenGOAL-Mod-blue.svg" alt="OpenGOAL Mod">
@@ -21,13 +21,12 @@ guard traffic, alongside the regular red guards.
 - **Repository:** [`whozghiar/jak2-mod-peaceful-haven-city`](https://github.com/whozghiar/jak2-mod-peaceful-haven-city) — base blue-guard traffic + the **City Peaceful**
   mode: ambient blue guards patrol as neutral 2-3 member squads.
 
-### Branch family
-| Branch | Adds |
+### Mod family
+| Repository | Adds |
 |---|---|
-| `jak2/features/blueguard-traffic` | base: `crimson-blue-guard` entity, faithful combat AI, ambient city-traffic spawning, modular hook layer |
-| **`jak2/features/city-peaceful`** *(this one)* | neutral blue patrol **squads** — formation nav, adaptive follower speed, leader re-election, mutual defense, faction friendly-fire immunity |
-| `jak2/features/city-insurrection` | three-front **territorial civil war** — district zoning, autonomous inter-faction combat, alert-free zones, debug-menu war-zone picker |
-| `jak2/features/blueguard` | both modes together (mutually exclusive at runtime) |
+| [`whozghiar/jak2-mod-blue-krimzon-guard`](https://github.com/whozghiar/jak2-mod-blue-krimzon-guard) | blue guards replacing red guards, identical behaviour, optional grenade launcher |
+| **`whozghiar/jak2-mod-peaceful-haven-city`** *(this one)* | neutral blue patrol **squads** — formation nav, adaptive follower speed, leader re-election, mutual defense, faction friendly-fire immunity |
+| [`whozghiar/jak2-mod-haven-city-rebellion`](https://github.com/whozghiar/jak2-mod-haven-city-rebellion) | three-front **territorial civil war** — district zoning, autonomous inter-faction combat, alert-free zones, war-zone picker in the Mods menu |
 
 **The mod ships OFF.** It is enabled in-game with **L3 + SELECT** under `Mods ▸ crimson-blueguard-peaceful ▸ Enable` (works in retail boot, no debug mode required).
 With it **off, Haven City is byte-for-byte stock Jak 2** — no blue guards spawn, ambient
@@ -38,9 +37,11 @@ behaviour. The choice re-rolls the ambient guards on the spot and persists acros
 ## ✨ Key Features
 - **New standalone entity:** `crimson-blue-guard` is a real GOAL type (subtype of
   `crimson-guard`), not a global texture swap — regular red guards keep spawning too.
-- **Identical to the stock guard in every other respect:** animations, sounds, death (including native purple particle dissolution and ground knockdown death), collision,
-  weapon loadout — all inherited unchanged (same slot indices, see the technical doc); only the
-  mesh/skeleton-group and the one behavior difference below are different.
+- **Same animations, sounds and collision as the stock guard:** all inherited unchanged (same slot
+  indices, see the technical doc). Death looks the same too (purple particle dissolution, knocked-down
+  guards stay on the ground), through the blue guard's own `die` state. Besides the
+  mesh/skeleton-group, only the faction behavior, health and combat AI below differ (each blue guard
+  rolls a taser, rifle or grenade launcher and keeps it).
 - **Its own faction behavior:** unlike the stock guard, it is passive toward Jak by default and
   never joins a general city alert against him. If Jak personally attacks it, it fights back
   without raising the city-wide alarm. Enhanced resilience: 8 HP (double standard guard health)
@@ -48,11 +49,11 @@ behaviour. The choice re-rolls the ambient guards on the spot and persists acros
 - **Manual "fight the other guards" trigger:** `crimson-blue-guard-attack-guards`, a small function
   that makes it go hostile toward the nearest red `crimson-guard` — never automatic, called
   explicitly (REPL or code).
-- **Mixed into ambient city traffic:** the traffic manager spawns the blue variant for a
-  configurable fraction of ambient guard spawns (`*crimson-blue-guard-ratio*`, default 1-in-2 of
-  the id-parity pool), right alongside the stock guard.
+- **Mixed into ambient city traffic:** while the mod is on, the traffic manager builds every
+  guard-pool process whose spawn id is odd as the blue variant (an id-parity test, so about half of
+  each pool) and sends a blue one out first whenever one is free, right alongside the stock guard.
 - **Faithful Crimson Guard Combat AI:** rifle and grenade launcher guards maintain tactical standoff distance (engaging targets up to 50m away), fire reactive bursts or parabolic grenades, and execute evasive combat rolls (`roll-left` / `roll-right`). Melee rifle-butt strikes are strictly an emergency close-quarters counter (< 2.5m), followed immediately by an evasive roll to resume shooting. Taser guards charge and shock with high-voltage electric arcs.
-- **City Peaceful mode** (`mod-city-peaceful.gc`, toggled from the Mods debug tab): when on, a
+- **City Peaceful mode** (`mod-city-peaceful.gc`, toggled from the Mods menu, L3 + SELECT): when on, a
   freshly-activated ambient blue guard becomes a **squad leader** and pulls 1-2 followers behind
   it — tight formation navigation with adaptive follower speed, automatic leader re-election on
   death, distinct weapon loadouts across the squad, and mutual retaliatory defense (hit one, the
@@ -64,10 +65,9 @@ behaviour. The choice re-rolls the ambient guards on the spot and persists acros
 - **Civilian Protection / Alert Suppression (Peaceful mode):** attacking or killing civilian
   pedestrians in the street no longer triggers police alarms or raises the city alert level.
   Stock red guards still trigger alerts normally if directly engaged.
-- **Modular `*mod-city-*-hook*` layer:** the shared traffic/guard engine files call ~10 named
+- **Modular `*mod-city-*-hook*` layer:** the shared traffic/guard engine files call 12 named
   function-pointer hooks (declared in `engine/ai/traffic-h.gc`); `mod-city-peaceful.gc` and
   `mod-city-hooks.gc` wire the required behaviors, while the rest stay at their stock defaults.
-  The engine files remain byte-identical across the branch family.
 
 ## 🚀 Step-by-Step Guide to Run the Mod
 
@@ -81,7 +81,7 @@ task set-game-jak2
 - **Status:** `task build-release-game` (or `task build-debug-game`) — required. The
   `build-actor` tool (`goalc/build_actor/jak2/build_actor.cpp`) and the `goalc` data-compiler
   (`goalc/make/Tools.cpp`) both gained a new opt-in `:native-header` flag used to build this
-  actor's art-group. See `docs/modding/build_and_iteration_workflow.md`.
+  actor's art-group. See `docs/modding/guides/task_scripts_reference.md`.
 - **Details:** engine/compiler C++ was modified (see the "Engine Changes" table in the technical
   doc below).
 ```bash
@@ -105,11 +105,11 @@ Run the game natively:
 task boot-game
 ```
 *(Or launch via the OpenGOAL REPL using `task repl`, then compile and run with `(mi)` and `(r)`).*
-Roughly 1 in 8 ambient guard spawns in Haven City will be blue. To see it faster while testing,
-set `(set! *crimson-blue-guard-ratio* 1)` at the REPL once booted — every ambient guard spawn
-becomes blue until you reset it back to `8` (or any N you like). You can also spawn one right in
-front of you regardless of the ratio with `(spawn-crimson-blue-guard-debug 0)` (baton guard) or
-`(spawn-crimson-blue-guard-debug 1)` (gun-equipped guard).
+Turn the mod on with **L3 + SELECT** (`Mods ▸ crimson-blueguard-peaceful ▸ Enable`): about half of
+each ambient guard pool in Haven City is then blue, and blue guards are sent out first. With the mod
+on, you can also spawn one right in front of you at the REPL with
+`(spawn-crimson-blue-guard-debug 0)` (baton guard) or `(spawn-crimson-blue-guard-debug 1)`
+(gun-equipped guard); in the city it takes an inactive blue guard from the traffic pool.
 
 ## 🎥 Demonstration Video
 
