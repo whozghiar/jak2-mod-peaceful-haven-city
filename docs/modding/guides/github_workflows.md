@@ -1,8 +1,8 @@
 # GitHub Actions Workflows Guide
 
 What each workflow in `.github/workflows/` does, when it runs and who may run it. It covers
-`whozghiar/jak-project` (the mother repository) and the mod repositories created from its
-`master-dev`, which inherit the same files. The day-to-day workflow around them is in
+`<owner>/jak-project` (the mother repository, the original or a fork of it) and the mod
+repositories created from its `master-dev`, which inherit the same files. The day-to-day workflow around them is in
 [`repository_workflow.md`](repository_workflow.md).
 
 ## Contents
@@ -27,13 +27,13 @@ What each workflow in `.github/workflows/` does, when it runs and who may run it
 [open-goal/jak-project] master
         |  daily at 10:00 UTC: sync-upstream.yaml
         v
-[whozghiar/jak-project] master        clean upstream mirror
+[<owner>/jak-project] master        clean upstream mirror
         |  merged by sync-upstream.yaml
         v
-[whozghiar/jak-project] master-dev    modding base: engine patches, tooling, Mods menu
+[<owner>/jak-project] master-dev    modding base: engine patches, tooling, Mods menu
         |
-        +--> mod repositories, whozghiar/<game>-<slug>  (task modding-new-mod)
-        |       on demand: task modding-sync-branch -- --push
+        +--> mod repositories, <owner>/<game>-<slug>  (task modding-new-mod)
+        |       on demand: task modding-sync-branch -- --push, or task modding-sync-all
         |       on push: lint.yml; by hand: build.yml, release.yml
         |
         +--> mods not moved yet, branches jak[1-3]/<type>/<slug> of this repository
@@ -66,10 +66,11 @@ Open by design:
   and are read-only (`contents: read`).
 
 **Mother repository guard.** A mod repository inherits every workflow file. The jobs that only
-make sense in `whozghiar/jak-project` — `sync-upstream.yaml`, `sync-global-catalog.yml`,
+make sense in the mother repository — `sync-upstream.yaml`, `sync-global-catalog.yml`,
 `mod-suggestion-triage.yml`, `branch-sync-check.yaml`, `sync-branch-with-master-dev.yml`, and
 `release.yml`'s "Trigger Downstream Syncs" step — carry
-`if: github.repository == 'whozghiar/jak-project'`. A mod repository also drops those files when it
+`if: endsWith(github.repository, '/jak-project')`: they run in the mother repository and in any
+fork of it that keeps the name, never in a mod repository. A mod repository also drops those files when it
 syncs, and keeps only `release.yml`, `lint.yml` and `build.yml`
 (`scripts/modding/sync_common.ALLOWED_MOD_REPO_WORKFLOWS`).
 
@@ -173,7 +174,7 @@ inherits.
   4. writes the root `index.json` in the OpenGOAL Launcher mod-source v1 schema and pushes it to
      `master-dev`.
 - **Why:** players add one URL to the launcher,
-  `https://raw.githubusercontent.com/whozghiar/jak-project/master-dev/index.json`, and get every
+  `https://raw.githubusercontent.com/<owner>/jak-project/master-dev/index.json`, and get every
   published mod and texture pack.
 
 ## 11. Quick reference

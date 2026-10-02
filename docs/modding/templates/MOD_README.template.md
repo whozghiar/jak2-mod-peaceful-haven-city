@@ -14,7 +14,7 @@
 {MOD_DESCRIPTION}
 
 - **Target Game:** {TARGET_GAME}
-- **Repository:** [`{REPO_PATH}`](https://github.com/{REPO_PATH}), created from the modding base [`whozghiar/jak-project`](https://github.com/whozghiar/jak-project)
+- **Repository:** [`{REPO_PATH}`](https://github.com/{REPO_PATH}), created from the modding base [`{BASE_REPO_PATH}`](https://github.com/{BASE_REPO_PATH})
 
 ## Key Features
 - **Feature 1:** Simple description of the first key feature.
@@ -49,7 +49,7 @@
 If you want to modify or compile this mod locally from source:
 
 ### 0. Get the Source
-Already working in a clone of [`whozghiar/jak-project`](https://github.com/whozghiar/jak-project)? Switch to this mod there, keeping your extracted game data:
+Already working in a clone of [`{BASE_REPO_PATH}`](https://github.com/{BASE_REPO_PATH})? Switch to this mod there, keeping your extracted game data:
 ```bash
 task modding-switch -- {REPO_NAME}
 ```
@@ -67,7 +67,7 @@ Make sure your environment is targeting {TARGET_GAME}:
 
 ### 2. Binary Compilation
 - **Status:** [Not required (GOAL-only mod, standard binaries sufficient) / `task build-release-game` (engine or compiler C++ changed) / `task build-release` + `task extract` (decompiler or decompiler/config changed)]
-- **Details:** [Specify which C++ layer was modified — see `docs/modding/guides/build_and_iteration_workflow.md`]
+- **Details:** [Specify which C++ layer was modified — see `docs/modding/guides/task_scripts_reference.md`, section 3]
 ```bash
 # GOAL-only mod: nothing to build — go straight to the REPL below.
 # Engine / compiler C++ changed:
@@ -101,7 +101,7 @@ task boot-game
 
 ## Compliance Checklist
 - [ ] **Native non-regression:** with the mod compiled but its toggle OFF, the game plays identically to stock.
-- [ ] **In-game Mods toggle [MANDATORY FOR FEATURES]:** the mod registers at least one enable/disable entry via `(mods-menu-register "{MOD_SLUG}" ...)` (Jak 2 / Jak 3, opens with **L3 + SELECT**, works in a retail boot) or a `{MOD_SLUG}`-prefixed **debug-only** submenu (Jak 1). See [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md).
+- [ ] **In-game Mods toggle:** the mod registers at least one enable/disable entry in the Mods menu under the slug `{MOD_SLUG}` (Jak 2 / Jak 3, opens with **L3 + SELECT**, works in a retail boot; the call is in the [Lisp wiki](.agents/skills/goal-lisp/wiki/common.md#1211-register-an-in-game-mods-toggle)) or a `{MOD_SLUG}`-prefixed **debug-only** submenu (Jak 1). See [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md).
 - [ ] **No direct `default-menu*.gc` edits.**
 - [ ] **Symbols prefixed** with the mod slug (`*mod-{MOD_SLUG}-*`, `mod-{MOD_SLUG}-*`).
 - [ ] **Verified Lisp instructions** used by this mod are present in the Lisp wiki (`.agents/skills/goal-lisp/wiki/`), recorded with the `kb` skill.

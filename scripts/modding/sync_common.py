@@ -14,6 +14,28 @@ one place to point at.
 """
 
 import os
+import re
+import subprocess
+
+# Every account keeps its mother repository under this name: a mod repository finds it next to
+# itself, at https://github.com/<owner>/jak-project.
+MOTHER_NAME = "jak-project"
+
+
+def github_repo(remote="origin", cwd=None):
+    """(owner, name) of a remote's GitHub URL, or None when the remote is missing or not on GitHub."""
+    res = subprocess.run(["git", "remote", "get-url", remote], cwd=cwd, capture_output=True, text=True)
+    m = re.search(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$", res.stdout.strip())
+    return (m.group(1), m.group(2)) if m else None
+
+
+def github_owner(cwd=None):
+    """The GitHub account of this clone's origin, which owns the mother and every mod repository."""
+    repo = github_repo("origin", cwd)
+    if not repo:
+        raise SystemExit("origin is not a GitHub repository: clone <owner>/jak-project, or one of its "
+                         "mod repositories, from GitHub.")
+    return repo[0]
 
 # Files that make sense only on master-dev. A plain `git merge master-dev`
 # would otherwise happily carry them onto every mod branch (they are not in

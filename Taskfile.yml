@@ -11,7 +11,7 @@ vars:
   # Compiler cache: if `sccache` is on PATH (install it with `scoop install sccache` on Windows,
   # or your package manager elsewhere), bake it in as the compiler launcher at CMake-generate time.
   # This makes rebuilds after a branch switch / partial revert near-instant for unchanged files -
-  # the same trick the CI uses (see .github/workflows/windows-build-clang.yaml). No-op if sccache
+  # the same trick upstream's CI uses (its windows-build-clang.yaml workflow). No-op if sccache
   # is not installed, so this stays safe on every platform.
   SCCACHE_FLAGS:
     sh: command -v sccache >/dev/null 2>&1 && echo "-DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache" || true
@@ -178,6 +178,10 @@ tasks:
     desc: "Merge master-dev into the current mod (scripts/modding/sync_branch_with_master_dev.py): a mod branch here, or a mod repository with -- --remote mother. --rebase / --push accepted after --"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/sync_branch_with_master_dev.py {{.CLI_ARGS}}"
+  modding-sync-all:
+    desc: "Merge the latest master-dev into every mod repository and push them, without touching this working directory (scripts/modding/sync_all_mods.py). e.g. -- --dry-run, or -- jak2-foo jak2-bar"
+    cmds:
+      - "{{.PYTHON}} ./scripts/modding/sync_all_mods.py {{.CLI_ARGS}}"
   modding-sync-catalog:
     desc: "Regenerate master-dev root index.json global catalog from published GitHub Releases (scripts/modding/sync_global_catalog.py). Add -- --offline or --dry-run"
     cmds:
@@ -193,7 +197,7 @@ tasks:
 
   # AI AGENTS
   kb-update:
-    desc: "Initialise and fast-forward the knowledge-base submodule .agents/skills (whozghiar/opengoal-modding-kb) without discarding local work (scripts/ai/kb_sync.py)"
+    desc: "Initialise and fast-forward the knowledge-base submodule .agents/skills (URL in .gitmodules) without discarding local work (scripts/ai/kb_sync.py)"
     cmds:
       - "{{.PYTHON}} ./scripts/ai/kb_sync.py {{.CLI_ARGS}}"
   ai-link:

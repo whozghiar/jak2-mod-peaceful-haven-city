@@ -61,12 +61,10 @@ def detect_current_branch() -> str:
 def detect_github_repo_info() -> tuple[str, str]:
   """Return (owner, repo_name) inferred from origin remote URL."""
   remote_url = run_git(["config", "--get", "remote.origin.url"])
-  if not remote_url:
-    return ("whozghiar", "jak-project")
   match = re.search(r"github\.com[/:]([\w-]+)/([\w-]+?)(?:\.git)?$", remote_url)
   if match:
     return (match.group(1), match.group(2))
-  return ("whozghiar", "jak-project")
+  raise SystemExit("origin is not a GitHub repository: the texture pack URLs point at it.")
 
 
 def detect_active_game() -> str:
@@ -100,7 +98,7 @@ def detect_author() -> str:
   if git_user and git_user.strip():
     return git_user.strip()
   owner, _ = detect_github_repo_info()
-  return owner or "whozghiar"
+  return owner
 
 
 def compute_sha256(filepath: Path) -> str:

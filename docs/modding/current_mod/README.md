@@ -25,7 +25,7 @@ developers, AI agents, and future maintainers.
 docs/modding/current_mod/<mod_slug>_readme.md
 ```
 
-(e.g. `docs/modding/current_mod/custom_animation_and_sound_readme.md`)
+(e.g. `docs/modding/current_mod/my-mod_readme.md`)
 
 ## 3. Recommended structure for mod technical readmes
 
@@ -55,7 +55,7 @@ Each technical mod document should adopt a structured, educational approach:
 
 ## 4. Texture packs for releases (`texture_packs/`)
 
-Any mod branch that provides a custom texture pack can store its packaged
+Any mod that provides a custom texture pack can store its packaged
 archive(s) inside:
 
 ```
@@ -64,8 +64,11 @@ docs/modding/current_mod/texture_packs/<slug>-v<version>.zip
 
 Why this directory:
 
-- **Git tracked:** unlike `custom_assets/jak*/texture_replacements/*`, this
-  directory is not ignored by `.gitignore`.
+- **Committed on purpose:** the folder's own `.gitignore` ignores `*.zip`, so
+  a work-in-progress pack is never committed by accident. Commit the pack you
+  ship with `git add -f docs/modding/current_mod/texture_packs/<file>.zip`:
+  the release workflow runs on a fresh checkout and only finds committed
+  archives.
 - **Branch-sync protected:** classified as "ours" in
   `scripts/modding/sync_common.py`, so it is never wiped or overwritten
   when merging `master-dev`.

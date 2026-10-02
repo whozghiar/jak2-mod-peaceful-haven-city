@@ -3,11 +3,11 @@
 Synchronize a mod with master-dev.
 
 Works on the checkout you run it from:
-- a mod repository checked out in whozghiar/jak-project as mods/<name> (merges origin/master-dev,
-  pushes to the mod repository's main),
+- a mod repository checked out in the mother repository (<owner>/jak-project) as mods/<name>
+  (merges origin/master-dev, pushes to the mod repository's main),
 - a standalone clone of a mod repository (merges master-dev from its `mother` remote, added on
   first use), or
-- a mod still on a branch of whozghiar/jak-project (merges origin/master-dev).
+- a mod still on a branch of the mother repository (merges origin/master-dev).
 
 By default, this script uses `git merge` (safe, non-destructive, preserves commit SHAs
 for published branches). It also offers an explicit `--rebase` option for developers
@@ -28,9 +28,6 @@ import subprocess
 import sys
 
 import sync_common
-
-MOTHER_URL = "https://github.com/whozghiar/jak-project.git"
-
 
 def run_cmd(cmd, check=True, capture=True):
     print(f">> Running: {cmd}")
@@ -100,7 +97,7 @@ def is_ancestor(ancestor_ref, target_ref):
 
 
 def default_remote():
-    """origin in whozghiar/jak-project itself, mother in a standalone clone of a mod repository."""
+    """origin in the mother repository itself, mother in a standalone clone of a mod repository."""
     url = git_quiet("remote", "get-url", "origin").stdout.strip()
     return "origin" if re.search(r"/jak-project(\.git)?/?$", url) else "mother"
 
@@ -118,7 +115,9 @@ def ensure_remote(name):
         if name != "mother":
             print(f"Error: remote '{name}' does not exist.", file=sys.stderr)
             sys.exit(1)
-        run_cmd(f"git remote add mother {MOTHER_URL}")
+        # The mother repository sits next to the mod repository: <owner>/jak-project.
+        owner = sync_common.github_owner(REPO_ROOT)
+        run_cmd(f"git remote add mother https://github.com/{owner}/{sync_common.MOTHER_NAME}.git")
 
 
 def main():
@@ -146,7 +145,7 @@ def main():
     )
     parser.add_argument(
         "--remote",
-        help="Remote that holds the source branch. Default: origin in whozghiar/jak-project, "
+        help="Remote that holds the source branch. Default: origin in the mother repository, "
              "mother (added automatically) in a standalone clone of a mod repository."
     )
     parser.add_argument(
@@ -255,6 +254,13 @@ def main():
         # CRITICAL: Always ensure the mod's root README.md is strictly preserved from HEAD
         # (prevents Git 3-way merge from silently splicing master-dev's hub README into the mod's)
         git_quiet("checkout", "HEAD", "--", "README.md")
+        if mod_repo:
+            # Same for a mod repository's catalog: it names this mod only, or does not exist
+            # before the mod's first release, while master-dev's index.json is the global catalog.
+            if git_quiet("cat-file", "-e", "HEAD:index.json").returncode == 0:
+                git_quiet("checkout", "HEAD", "--", "index.json")
+            else:
+                drop_path("index.json")
 
         # master-dev-only files ride along on a clean, no-conflict merge too:
         # strip them back out (see sync_common).

@@ -422,7 +422,7 @@ jobs:
         # no such step: the catalog's daily schedule picks their releases up.
         # Requires `actions: write` above.
         # Mother repository only: a mod repository has no master-dev catalog to refresh.
-        if: github.repository == 'whozghiar/jak-project'
+        if: endsWith(github.repository, '/jak-project')
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

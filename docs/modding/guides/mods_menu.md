@@ -1,8 +1,7 @@
 # Unified In-Game "Mods" Menu
 
 > [!IMPORTANT]
-> Every new mod created in this repository — strictly required without
-> exception for `jak[x]/features/*` branches — must register into this menu.
+> Every mod built from this repository must register into this menu.
 > Mod features must ship off by default and be toggleable by players at
 > runtime in retail boots via **L3 + SELECT**. The exact registration call
 > is in [the Lisp wiki](../../../.agents/skills/goal-lisp/wiki/common.md#1211-register-an-in-game-mods-toggle)
@@ -68,7 +67,7 @@ menu and a small registry:
 
 A mod never edits `mods-menu.gc` directly — it registers its own submenu
 from one of its own already-compiled files. Entries are sorted
-alphabetically by slug on every rebuild, so branch merge order never
+alphabetically by slug on every rebuild, so registration order never
 changes what the player sees.
 
 ### Controls
@@ -119,7 +118,7 @@ documentation.
 | config var | prefixed with the mod slug |
 | helper function | prefixed with the mod slug |
 | builder function | named `mod-<slug>-build-menu` |
-| registry label | the mod slug, exactly as the branch name's last segment |
+| registry label | the mod slug: the launcher catalog key, which is the repository name without its `<game>-` prefix |
 
 ## 4. Wiring the template into a build
 

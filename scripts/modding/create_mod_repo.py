@@ -70,8 +70,7 @@ def is_ancestor(ancestor: str, ref: str) -> bool:
 
 
 def owner() -> str:
-    m = re.search(r"github\.com[:/]([^/]+)/", git("remote", "get-url", "origin"))
-    return m.group(1) if m else "whozghiar"
+    return sync_common.github_owner(MOTHER_ROOT)
 
 
 def catalog_mods(ref: str) -> dict:
@@ -257,6 +256,7 @@ def adjust_new(mod: Mod, description: str, youtube: str) -> None:
         "{TARGET_GAME}": label,
         "{GAME_BADGE}": label.replace(" ", "%20"),
         "{REPO_PATH}": mod.full_name,
+        "{BASE_REPO_PATH}": f"{owner()}/{sync_common.MOTHER_NAME}",
         "{REPO_NAME}": mod.name,
         "{TASK_SET_GAME}": f"task set-game-{mod.game}",
         "{GAME_DIR}": mod.game,
@@ -310,7 +310,7 @@ def ask_new_mod(args: argparse.Namespace) -> None:
         sys.exit("gh not found: install it (scoop install gh) and run gh auth login")
     print("New mod repository, created from master-dev.\n")
     game = ask("Game (jak1, jak2, jak3)", "jak2", r"jak[123]", "Answer jak1, jak2 or jak3.")
-    slug = ask("Mod name: letters, digits, - or _ (it names the repository)", "",
+    slug = ask(f"Mod name, letters, digits, - or _ (the repository becomes {game}-<name>)", "",
                r"[A-Za-z0-9][A-Za-z0-9_-]*", "Use letters, digits, - and _, starting with a letter or digit.")
     name = f"{owner()}/{game}-{slug}"
     if subprocess.run(["gh", "repo", "view", name], capture_output=True).returncode == 0:
@@ -320,9 +320,9 @@ def ask_new_mod(args: argparse.Namespace) -> None:
     visibility = ask("Visibility (public, private)", "public", r"public|private", "Answer public or private.")
     args.private = visibility == "private"
     args.new = f"{game}/{slug}"
-    print(f"\nRepository : {name} ({visibility})"
+    print(f"\nRepository  : {name} ({visibility})"
           f"\nLocal branch: mods/{game}-{slug}"
-          f"\nCatalog key: {slug}")
+          f"\nCatalog key : {slug}")
     if args.private:
         print("Private: players cannot install it from the launcher until you make it public.")
     if ask("Create it? (y, n)", "y", r"[yYnN]", "Answer y or n.").lower() != "y":

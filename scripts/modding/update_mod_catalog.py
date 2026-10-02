@@ -6,7 +6,7 @@ https://github.com/open-goal/launcher/tree/main/schemas/mod-source/v1
 
 Usage:
     python scripts/modding/update_mod_catalog.py
-    python scripts/modding/update_mod_catalog.py --tag v1.0.0 --repo whozghiar/jak-project
+    python scripts/modding/update_mod_catalog.py --tag v1.0.0 --repo <owner>/jak-project
     python scripts/modding/update_mod_catalog.py --next-version
     python scripts/modding/update_mod_catalog.py --print-metadata
 """
@@ -19,6 +19,8 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+
+from sync_common import github_repo
 
 if hasattr(sys.stdout, "reconfigure"):
   sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -431,9 +433,8 @@ def main():
   )
   parser.add_argument(
       "--repo",
-      default=os.environ.get("GITHUB_REPOSITORY")
-      or os.environ.get("REPO", "whozghiar/jak-project"),
-      help="GitHub repository owner/repo",
+      default=os.environ.get("GITHUB_REPOSITORY") or os.environ.get("REPO"),
+      help="GitHub repository owner/repo (default: where the branch publishes, read from its git remote)",
   )
   parser.add_argument(
       "--mod-id",
@@ -521,6 +522,13 @@ def main():
   args = parser.parse_args()
 
   branch = args.branch or get_current_branch()
+  if not args.repo:
+    # The repository the branch publishes to: mods/<name> tracks its mod repository.
+    remote = run_cmd(f"git config --get branch.{branch}.remote") or "origin"
+    found = github_repo(remote, REPO_ROOT)
+    if not found:
+      raise SystemExit(f"Cannot tell which GitHub repository {branch} publishes to: pass --repo <owner>/<name>.")
+    args.repo = "/".join(found)
   index_path = Path(args.index_file)
   if not index_path.is_absolute():
     index_path = REPO_ROOT / index_path
@@ -565,7 +573,9 @@ def main():
   cover_path = REPO_ROOT / "docs" / "img" / "mod" / "mod_cover.png"
   resolved_cover_url = args.cover_url
   if not resolved_cover_url and (cover_path.is_file() or branch.startswith(("jak1/", "jak2/", "jak3/"))):
-    resolved_cover_url = f"https://raw.githubusercontent.com/{args.repo}/{branch}/docs/img/mod/mod_cover.png"
+    # A mod repository publishes from main, whatever the local branch is called (mods/<name>).
+    cover_ref = "main" if repo_slug else branch
+    resolved_cover_url = f"https://raw.githubusercontent.com/{args.repo}/{cover_ref}/docs/img/mod/mod_cover.png"
 
   if args.metadata_only:
     refresh_metadata_only(
@@ -740,7 +750,7 @@ def main():
       repo=args.repo,
       branch=branch,
       detected_game=detected_game,
-      default_author=authors[0] if authors else "whozghiar",
+      default_author=authors[0] if authors else args.repo.split("/")[0],
       default_cover_url=resolved_cover_url,
   )
 

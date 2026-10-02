@@ -1,23 +1,67 @@
 # How to Create a Mod
 
-The whole procedure for a new mod, from an empty repository to a release players install from
-the OpenGOAL Launcher: which commands to run, which resources to read, and how to feed the
-knowledge base. How the repositories fit together is explained in
+The whole procedure for a new mod, from your own copy of the project to a release players
+install from the OpenGOAL Launcher: which commands to run, which resources to read, how to work
+with an AI agent, and how to feed the knowledge base. How the repositories fit together, and
+what switching between them implies, is explained in
 [`repository_workflow.md`](repository_workflow.md).
 
-## 0. One-time setup
+`<owner>` below is the GitHub account that holds your mother repository, and `<you>` your own
+account: the same one unless you are a collaborator on someone else's.
 
-Done once per machine, in a clone of `whozghiar/jak-project`.
+## 0. Set up once
 
-1. **Clone with the knowledge base** (a submodule):
+### Get your own mother repository
+
+The original project is `whozghiar/jak-project`. If it is not yours, fork it: the tooling reads
+the owner from your clone's `origin` remote and creates your mods under your account, so a fork
+works without editing any script or workflow.
+
+1. **Fork it** on GitHub and keep the name `jak-project`: the mother-only workflows (upstream
+   sync, catalog, issue triage) run only in a repository with that name, and mod repositories find
+   their mother at `<owner>/jak-project`. Copying only the default branch (`master-dev`) is fine:
+   when `master` is missing, the upstream sync starts from upstream directly.
+2. **Enable GitHub Actions** in the fork's Actions tab: GitHub disables the workflows of a new
+   fork, the scheduled ones included. Without them there is no lint, no release, no upstream sync
+   and no catalog. The upstream sync pushes upstream's own workflow changes only with a `GH_PAT`
+   secret (a token with the `repo` and `workflow` scopes); without it, it warns and leaves
+   `master` behind.
+3. **Point players at your catalog.** In your `README.md`, replace the catalog URL of the player
+   section with `https://raw.githubusercontent.com/<you>/jak-project/master-dev/index.json`. Your
+   `index.json` still lists the original's mods: the catalog workflow (daily, or run it from the
+   Actions tab) rebuilds it from your own releases and mod repositories, so they drop out at its
+   first run and yours appear with your first release.
+4. **The knowledge base** (`.agents/skills`, a submodule) points at the original's public
+   repository: reading works as is. To record your own discoveries (section 7), fork
+   `whozghiar/opengoal-modding-kb` too, then point the submodule at your fork:
    ```bash
-   git clone --recurse-submodules https://github.com/whozghiar/jak-project.git
+   git submodule set-url .agents/skills https://github.com/<you>/opengoal-modding-kb.git
+   task kb-update
+   git commit -m "chore: use my knowledge-base fork" .gitmodules
+   git push
+   ```
+5. **Later, to take the original's improvements**, merge its `master-dev` into yours and keep
+   your own `index.json` and `README.md` on a conflict:
+   ```bash
+   git remote add original https://github.com/whozghiar/jak-project.git
+   git fetch original master-dev
+   git switch master-dev
+   git merge original/master-dev
+   git push
+   ```
+   Then bring the change into your mods with `task modding-sync-all` (section 8).
+
+### Install the tools
+
+1. **Clone with the knowledge base:**
+   ```bash
+   git clone --recurse-submodules https://github.com/<owner>/jak-project.git
    ```
    In an existing clone, `task kb-update` initialises it.
-2. **Install the tools:** the C++ toolchain from [`docs/setup/system/windows.md`](../../setup/system/windows.md)
+2. **Install** the C++ toolchain from [`docs/setup/system/windows.md`](../../setup/system/windows.md)
    (or `linux.md` / `macos.md`), [Task](https://taskfile.dev/), Python 3, and the GitHub CLI
-   (`scoop install gh`, then `gh auth login`). `sccache` is optional and makes rebuilds after a
-   switch near-instant.
+   (`scoop install gh` on Windows), then log in with `gh auth login`. `sccache` is optional and
+   makes rebuilds after a switch near-instant.
 3. **Build the tools:**
    ```bash
    task gen-cmake-release
@@ -43,14 +87,14 @@ The task asks for:
 | Question | What it decides |
 | :--- | :--- |
 | Game | `jak1`, `jak2` or `jak3`: the first part of the repository name. |
-| Mod name | The repository name (`<game>-<name>`) and the mod's launcher catalog key. Players' launchers know the mod by this key, so pick it for good. |
+| Mod name | The repository name (`<game>-<name>`, shown in the question) and the mod's launcher catalog key. Players' launchers know the mod by this key, so pick it for good. |
 | One sentence | The README overview and the repository description. |
 | Demo video | Optional YouTube link embedded in the README. |
 | Visibility | `public` (default) or `private`. A private mod stays out of the launcher catalog until you make it public (see section 9). |
 
-It then creates `whozghiar/<game>-<name>` from `master-dev`, with a README from
-[`MOD_README.template.md`](../templates/MOD_README.template.md), and the local branch
-`mods/<game>-<name>`. Switch to it and select its game:
+It shows a summary and asks for confirmation, then creates `<owner>/<game>-<name>` from
+`master-dev`, with a README from [`MOD_README.template.md`](../templates/MOD_README.template.md),
+and the local branch `mods/<game>-<name>`. Switch to it and select its game:
 
 ```bash
 task modding-switch -- jak2-my-mod
@@ -116,7 +160,8 @@ task repl         # terminal 2: then (mi) after each edit to hot-reload
 | `task build-release-decomp`, then `task extract` | After a change to `decompiler/` or `decompiler/config/`. |
 
 Two traps when testing: a cold boot loads save slot 1, and toggled cheats and settings persist
-in `%APPDATA%/OpenGOAL/<game>/settings/pc-settings.gc`.
+in `%APPDATA%/OpenGOAL/<game>/settings/pc-settings.gc`. Both are shared by every mod you switch
+to.
 
 ## 5. Custom assets (optional)
 
@@ -141,7 +186,8 @@ in `%APPDATA%/OpenGOAL/<game>/settings/pc-settings.gc`.
 
 When you verify something another mod could reuse (a GOAL pattern, a trap, an engine behavior,
 the cause of a crash), it goes into the knowledge base, not into the mod. A fact is verified
-when it compiled, when you saw it in game, or when it is read in `goal_src/`.
+when it compiled, when you saw it in game, or when it is read in `goal_src/`. Recording needs
+push access to the knowledge-base repository: in a fork, your own fork of it (section 0).
 
 With an AI agent, ask it to record the fact: it follows the `kb` skill. By hand:
 
@@ -166,10 +212,12 @@ Every repository picks the change up at its next Claude Code session, or with
 
 - `git push` on `mods/<name>` goes to the mod repository's `main`.
 - When the mod needs something newer from the base, run `task modding-sync-branch -- --push`: it
-  merges `master-dev` and pushes.
+  merges `master-dev` into the current mod and pushes.
 - An improvement every mod should get (an engine patch, the Mods menu framework, a script)
-  belongs in `master-dev`: switch to it, commit, push, then sync the mods that need it. If you
-  wrote it in a mod first, bring it over with `git cherry-pick`.
+  belongs in `master-dev`: switch to it, commit, push, then run `task modding-sync-all`, which
+  merges `master-dev` into every mod repository and pushes them, without touching your working
+  directory (see [`repository_workflow.md`](repository_workflow.md#bring-it-into-every-mod-at-once)).
+  If you wrote it in a mod first, bring it over with `git cherry-pick`.
 
 ## 9. Release
 
@@ -177,30 +225,54 @@ Every repository picks the change up at its next Claude Code session, or with
    retail Mods menu, prefixed symbols, comments), then a cold `task boot-game-retail`.
 2. **Make it public** if you created it private:
    ```bash
-   gh repo edit whozghiar/jak2-my-mod --visibility public --accept-visibility-change-consequences
+   gh repo edit <owner>/jak2-my-mod --visibility public --accept-visibility-change-consequences
    ```
 3. **Run the release** from the repository's Actions tab (`release.yml`), or:
    ```bash
-   gh workflow run release.yml -R whozghiar/jak2-my-mod --ref main \
+   gh workflow run release.yml -R <owner>/jak2-my-mod --ref main \
      -f mod_name="My Mod" -f mod_description="One sentence." -f tag_name="v1.0.0"
    ```
    It rebuilds Windows and Linux (30 to 60 minutes), tags `<slug>-v1.0.0`, and publishes the
-   archives and the mod's `index.json`. See [`mod_distribution_guide.md`](mod_distribution_guide.md).
+   archives and the mod's `index.json`. Only the repository owner can run it. See
+   [`mod_distribution_guide.md`](mod_distribution_guide.md).
 4. **Catalog:** the global catalog on `master-dev` lists the release within a day, or at once
-   with `gh workflow run sync-global-catalog.yml -R whozghiar/jak-project --ref master-dev`.
+   with `gh workflow run sync-global-catalog.yml -R <owner>/jak-project --ref master-dev`.
 
-## 10. Working with an AI agent
+## 10. Develop with an AI agent
 
-What is already in place in every mod repository:
+### What every repository already provides
 
-- The agent loads `AGENTS.md`, the golden rules and the commands, at the start of each session.
-- The skills above load when the task matches; the knowledge base refreshes itself.
-- The agent may compile (`task compile-check`, `task build-release-game`) but never launch the
-  game: a hook blocks it. It gives you the command to run and asks what you see.
+| File | What it does |
+| :--- | :--- |
+| `AGENTS.md` | The instructions every agent loads: the golden rules, "compile, never launch", the commands. Claude Code reads it through `CLAUDE.md`, Gemini CLI through `.gemini/settings.json`; Codex, Copilot and Cursor read it natively. |
+| `.agents/skills/` | The knowledge base: skills an agent loads when the task matches, and the Lisp wiki. Claude Code reads them through links in `.claude/skills/`. |
+| `.claude/settings.json` | Claude Code permissions: the compile tasks run without asking; launching the game is denied. A SessionStart hook refreshes the knowledge base and the links. |
+| `.claude/hooks/block_game_launch.py` | Blocks any attempt to launch the game or attach the debugger. Other agents have no such hook: `AGENTS.md` forbids it, so say so again if one tries. |
 
-Requests that work well:
+### The session loop
 
-- "Add <feature> to this mod, off by default behind a Mods menu toggle; run compile-check and
-  give me the cold-boot command."
-- "This crash happens when <steps>; find the cause in goal_src before changing anything."
-- "Record what we verified about <topic> with the kb skill."
+1. **Switch first, then start the agent** in the working directory:
+   `task modding-switch -- <name>`. An agent works on whatever is checked out; do not switch
+   while it works. Two agents on two mods need two working directories (see the limits in
+   [`repository_workflow.md`](repository_workflow.md#limits)).
+2. **Ask for one change with its check**, for example: "Add <feature> to this mod, off by default
+   behind a Mods menu toggle; run compile-check and give me the cold-boot command."
+3. **The agent** reads the wiki and the code, edits, and runs `task compile-check` until it
+   compiles. It may also rebuild the C++ (`task build-release-game`) or the decompiler.
+4. **You run the cold boot** it gives you (`task boot-game`, or `task boot-game-retail` for the
+   Mods menu) and tell it what you see. A change is done only after that.
+5. **The agent documents** the change in the README's "Modding Changes Log" and in
+   `docs/modding/current_mod/<slug>_readme.md`.
+6. **Knowledge:** ask it to record what was verified and reusable with the `kb` skill; it
+   commits and pushes from `.agents/skills`.
+7. **Commit and push** the mod. Commit messages written with an agent end with `(AI-assisted)`.
+
+### Good to know
+
+- Claude Code keeps one auto memory per folder, shared by every mod of the working directory:
+  ask the agent to put mod notes in `docs/modding/current_mod/` and general facts in the
+  knowledge base rather than in its memory.
+- Agents never open an issue or a pull request on their own, and say they made one when asked
+  to.
+- Requests that work well: "This crash happens when <steps>; find the cause in goal_src before
+  changing anything." "Record what we verified about <topic> with the kb skill."

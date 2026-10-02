@@ -2,7 +2,7 @@
 
 > OpenGOAL Reference Manual
 >
-> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — all mod branches
+> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod
 > - **Origin:** `master-dev`
 > - **Scope:** Taskfile Automation (`Taskfile.yml`), Build Targets & Modding Python Scripts (`scripts/modding/*.py`)
 
@@ -52,6 +52,7 @@ In OpenGOAL, developer commands are unified under [Taskfile](https://taskfile.de
 - `task gen-cmake-release`:
   - **When?** Once after cloning the repo, after deleting `build/`, or after CMakeLists changes.
   - **Why?** Configures CMake with Clang and Ninja. Automatically detects and enables `sccache` compiler cache if installed on PATH, accelerating rebuilds by 10×.
+- **sccache** (optional, recommended): install it (`scoop install sccache` on Windows, `sudo apt install sccache` or `cargo install sccache` on Linux, `brew install sccache` on macOS), then run `task gen-cmake-release` again, which wires it in when it is on `PATH`. Raise its cache size so several mods fit (`setx SCCACHE_CACHE_SIZE 25G` on Windows, `export SCCACHE_CACHE_SIZE=25G` elsewhere). `sccache --show-stats` shows the cache hits: a rebuild after switching mods should be almost all hits.
 - `task clean-cmake`:
   - **When?** When CMake cache corruption occurs or after major upstream refactors.
   - **Why?** Deletes `build/` and `out/build/` cleanly.
@@ -62,10 +63,11 @@ In OpenGOAL, developer commands are unified under [Taskfile](https://taskfile.de
   - **Why?** Compiles ONLY `gk` and `goalc`. Skips ~18 unneeded binaries (decompiler, LSP, unit tests). Takes seconds instead of 10+ minutes.
 - `task build-release-decomp`:
   - **When?** When changing asset extraction logic, glTF model injection (`extra_art_groups_by_dgo`), or collision parsers in `decompiler/`.
-  - **Why?** Compiles ONLY the decompiler binary.
+  - **Why?** Compiles ONLY the decompiler binary. A decompiler change reaches the game only after `task extract` (or the decompile tasks of §6) runs it again.
 - `task build-release`:
   - **When?** First setup or when cutting a full release.
   - **Why?** Builds all ~20 executables across the repository.
+- `task build-debug`, `task build-debug-game`, `task build-debug-decomp`: the Debug equivalents, after `task gen-cmake-debug`.
 
 ---
 
@@ -390,12 +392,12 @@ task modding-new-mod -- --new jak2/traffic-overhaul --description "Denser, smart
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
-  | `<target>` | Positional | A mod repository name (`jak2-blue-krimzon-guard`), `master-dev`, or a branch name. |
+  | `<target>` | Positional | A mod repository name (`jak2-my-mod`), `master-dev`, or a branch name. |
   | `--list` | Flag *(optional)* | List the mod repositories (here and on GitHub) and the mods still on a branch. |
 
 *Example:*
 ```bash
-task modding-switch -- jak2-blue-krimzon-guard
+task modding-switch -- jak2-my-mod
 ```
 
 ---
@@ -422,10 +424,28 @@ task modding-sync-branch -- --push
 
 ---
 
-### 4. `task kb-update` and `task ai-link`
+### 4. `task modding-sync-all -- [options]`
+- **Script:** [`sync_all_mods.py`](../../../scripts/modding/sync_all_mods.py)
+- **When?** After a change on `master-dev` that every mod should get (an engine patch, the Mods menu framework, tooling, shared docs, the knowledge-base pointer).
+- **Why?** Runs `task modding-sync-branch -- --push` for every mod repository at once, in temporary worktrees in the system temp folder, so your working directory, its branch and its uncommitted changes are never touched. The mod repositories are the local `mods/*` branches plus, when `gh` is installed, the account's repositories with the `opengoal-mod` topic. For each one it fetches it, merges `origin/master-dev` under the mod-repository rules and pushes to its `main`. It skips a mod already up to date, one whose `mods/<name>` holds commits that are not pushed, and the one checked out here (sync that one with `task modding-sync-branch -- --push`). A real conflict leaves that mod untouched, nothing pushed, and the summary names the files; the task then exits with an error.
+- **CLI Parameters (`-- <args>`):**
+  | Parameter | Type / Default | Description |
+  | :--- | :--- | :--- |
+  | `<name>...` | Positional *(optional)* | Only these mod repositories (default: all of them). |
+  | `--dry-run` | Flag *(optional)* | Report what each mod needs; merge and push nothing. |
+
+*Example:*
+```bash
+task modding-sync-all -- --dry-run
+task modding-sync-all
+```
+
+---
+
+### 5. `task kb-update` and `task ai-link`
 - **Scripts:** [`kb_sync.py`](../../../scripts/ai/kb_sync.py), [`link_skills.py`](../../../scripts/ai/link_skills.py)
 - **When?** Rarely by hand: the Claude Code SessionStart hook runs both at the start of every session.
-- **Why?** `.agents/skills/` is the knowledge-base submodule ([`opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb)). `kb-update` initialises it, puts it on `main` and fast-forwards it, without ever discarding local commits or edits, then links each skill into `.claude/skills/`, the only folder Claude Code reads. `ai-link` does the linking alone. To record a discovery in the knowledge base, follow the `kb` skill.
+- **Why?** `.agents/skills/` is the knowledge-base submodule (`opengoal-modding-kb`, URL in `.gitmodules`). `kb-update` initialises it, puts it on `main` and fast-forwards it, without ever discarding local commits or edits, then links each skill into `.claude/skills/`, the only folder Claude Code reads. `ai-link` does the linking alone. To record a discovery in the knowledge base, follow the `kb` skill.
 
 *Example:*
 ```bash
@@ -434,7 +454,7 @@ task kb-update
 
 ---
 
-### 5. `task modding-sync-catalog -- [options]`
+### 6. `task modding-sync-catalog -- [options]`
 - **Script:** [`sync_global_catalog.py`](../../../scripts/modding/sync_global_catalog.py)
 - **When?** On `master-dev` to refresh and rebuild the unified root `index.json` catalog containing all published mods and versions.
 - **Why?** Queries the GitHub Releases of this repository and of every mod repository (same owner, `opengoal-mod` topic), parses the catalog attached to each release, dedupes versions, takes each mod repository's own `index.json` as the source of its name, description and website, and writes the consolidated Launcher v1 schema file.
@@ -444,7 +464,7 @@ task kb-update
   | `--repo <owner/repo>` | String (`auto-detect`) | Target GitHub repository in `owner/repo` format. |
   | `--output <path>` | Path (`<repo_root>/index.json`) | Output path for the consolidated catalog file. |
   | `--offline` | Flag *(optional)* | Gathers releases strictly from local git release tags (`*-v*.*.*`) without calling GitHub REST API. |
-  | `--source-name "<name>"` | String (`Whozghiar OpenGOAL Mods Hub`) | Catalog display title shown in the OpenGOAL Launcher UI. |
+  | `--source-name "<name>"` | String (`<Owner> OpenGOAL Mods Hub`) | Catalog display title shown in the OpenGOAL Launcher UI. |
   | `--dry-run` | Flag *(optional)* | Analyzes releases and prints summary statistics to terminal without modifying `index.json`. |
 
 *Example:*
@@ -454,13 +474,13 @@ task modding-sync-catalog -- --offline
 
 ---
 
-### 6. Per-Mod Catalog Tool: `update_mod_catalog.py`
+### 7. Per-Mod Catalog Tool: `update_mod_catalog.py`
 - **When?** During release creation (`release.yml` calls it).
 - **Why?** Generates and maintains an individual mod's `index.json` catalog.
 
 ---
 
-### 7. `task modding-package-texture-pack` (Alias: `task modding-register-texture-pack`) `-- [options]`
+### 8. `task modding-package-texture-pack` (Alias: `task modding-register-texture-pack`) `-- [options]`
 - **Script:** [`package_texture_pack.py`](../../../scripts/modding/package_texture_pack.py)
 - **When?** When registering a standalone texture pack into `index.json` after exporting it via the OpenGOAL Texture Pack Generator GUI (or when creating one via CLI with `--from-source`).
 - **Why?** Recovers launcher-compliant `.zip` archives from `docs/modding/current_mod/texture_packs/` (generated by the GUI tool), inspects their internal `metadata.json`, computes SHA256 checksums, and automatically registers or updates the texture pack in `index.json` under `"texturePacks"`. Also supports building directly from raw PNG textures in `custom_assets/<game>/texture_replacements/` when run with `--from-source`.
@@ -514,7 +534,7 @@ task modding-package-texture-pack -- --from-source --game jak2 --slug blue-kg-te
 4. Register the pack into `index.json`: `task modding-package-texture-pack`.
 5. When publishing, upload the `.zip` archive as a GitHub Release asset (or trigger `release.yml` which automatically packages it).
 
-### Scenario D: Bringing the Latest Modding Base into a Mod
-1. Switch to the mod (`task modding-switch -- <name>`), then run `task modding-sync-branch -- --push`.
-2. If conflicts occur, inspect the reported files or run the recommended resolution command.
+### Scenario D: Bringing the Latest Modding Base into the Mods
+1. Every mod at once: `task modding-sync-all` (try `-- --dry-run` first). Only the current mod: switch to it (`task modding-switch -- <name>`), then `task modding-sync-branch -- --push`.
+2. If a mod reports a conflict, switch to it, run `task modding-sync-branch`, resolve the reported files, commit and push.
 3. Test with cold boot: `task boot-game-retail`.

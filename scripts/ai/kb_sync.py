@@ -2,7 +2,7 @@
 """
 Bring the knowledge-base submodule (.agents/skills) up to date.
 
-.agents/skills is a git submodule of whozghiar/opengoal-modding-kb. A submodule is checked out
+.agents/skills is the knowledge-base git submodule (its URL is in .gitmodules). A submodule is checked out
 at the commit the host repository recorded, without a branch. This script initialises it when
 needed, puts it on `main` when that loses nothing, and fast-forwards `main` to origin/main.
 It never discards work: commits or edits that block a fast-forward are left alone and reported.

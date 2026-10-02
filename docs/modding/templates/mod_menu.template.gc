@@ -12,7 +12,7 @@
 
   You never touch `pc/features/mods-menu.gc`, `default-menu.gc` or
   `default-menu-pc.gc` -- that is the whole point: zero shared-file edits, zero
-  merge conflicts between mod branches.
+  merge conflicts between mods.
 
   THIS FILE MUST NOT BE DEBUG-ONLY
   -------------------------------
@@ -28,7 +28,7 @@
        - config vars : *mod-<slug>-<option>*
        - helpers     : mod-<slug>-<option>-<verb>
        - builder     : mod-<slug>-build-menu
-     This is what keeps two branches from colliding on a symbol.
+     This is what keeps two mods from colliding on a symbol.
   2. `popup-menu-flag` draws a green check when `is-toggled?` returns truthy.
      `is-toggled?` runs EVERY FRAME the menu is on screen -- it must be a cheap
      pure read, never a spawn or an allocation.

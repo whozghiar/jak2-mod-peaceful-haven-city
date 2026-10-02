@@ -1,12 +1,12 @@
 # OpenGOAL Mod Distribution & Release Guide
 
-> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod repository (and the mods still on a branch of `whozghiar/jak-project`)
+> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod repository (and the mods still on a branch of the mother repository)
 > - **Origin:** `master-dev`
 > - **Related Guide:** [`github_workflows.md`](github_workflows.md)
 
 > ### Summary
 >
-> [1. C++ Pipeline Support](#1-why-this-pipeline-handles-c-changes-goalc-extractor-gk) · [2. Archive Layout](#2-mandatory-mod-archive-layout) · [3. CI/CD Release (`release.yml`)](#3-automated-github-actions-release-workflow-releaseyml) · [4. Launcher Catalog (`index.json`)](#4-updating-the-opengoal-launcher-catalog-indexjson) · [5. Cover Thumbnail](#5-mod-cover-thumbnail-docsimgmodmod_coverpng) · [6. Release Checklist](#6-end-to-end-checklist-for-releasing-a-mod)
+> [1. C++ Pipeline Support](#1-why-this-pipeline-handles-c-changes-goalc-extractor-gk) · [2. Archive Layout](#2-mandatory-mod-archive-layout) · [3. CI/CD Release (`release.yml`)](#3-triggering-a-release-from-a-mod-repository) · [4. Launcher Catalog (`index.json`)](#4-opengoal-launcher-integration-indexjson) · [Cover Thumbnail](#mod-cover-thumbnail-mod_coverpng)
 
 ---
 
@@ -72,16 +72,14 @@ The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod
 > from the **Actions** tab or via `gh workflow run`. This is a deliberate choice — a
 > release is an explicit action, never a side effect of a `git push`.
 >
-> **Always a full rebuild.** There is no more "fast packaging" mode: every release
-> fully recompiles Windows and Linux from source. And the three fields `mod_name`,
-> `mod_description`, `tag_name` are all **mandatory** — no more auto-detection or
-> `auto` value: you decide the name, description and version number that ship to
-> players.
+> **Always a full rebuild.** Every release recompiles Windows and Linux from source.
+> The three fields `mod_name`, `mod_description` and `tag_name` are mandatory: you
+> decide the name, description and version number that ship to players.
 >
 > **Repository owner only.** The workflow checks `github.actor` against the
 > repository owner before doing anything else — write access to push is
 > not enough to trigger a release. See
-> [GitHub Actions Workflows Guide § Access Control](github_workflows.md#access-control).
+> [GitHub Actions Workflows Guide § Access Control](github_workflows.md#2-access-control).
 
 ### Triggering it — via GitHub Actions or the `gh` CLI
 
@@ -98,7 +96,7 @@ The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod
 
 **Command line:**
 ```bash
-gh workflow run release.yml --repo whozghiar/jak2-my-mod --ref main \
+gh workflow run release.yml --repo <owner>/jak2-my-mod --ref main \
   -f mod_name="Jak 3 JetBoard" \
   -f mod_description="Adds Jak 3's jetboard to Jak 2." \
   -f tag_name="v1.0.0"
@@ -149,16 +147,6 @@ The `scripts/modding/update_mod_catalog.py` script automatically generates an `i
 ### Mod Cover Thumbnail (`mod_cover.png`)
 
 For each mod, you can manually drop a cover thumbnail at `docs/img/mod/mod_cover.png` in the mod repository. It is automatically detected and injected into `index.json` (`coverArtUrl` and `thumbnailArtUrl`) for visual display in the OpenGOAL Launcher, as well as in GitHub release notes.
-
-### For players:
-In the OpenGOAL Launcher:
-1. Go to **Settings ▸ Mods ▸ Add Custom Mod Source**.
-2. Enter the **Consolidated Master Catalog** URL (Recommended — provides access to **all** published mods):
-   ```text
-   https://raw.githubusercontent.com/whozghiar/jak-project/master-dev/index.json
-   ```
-   *(Alternatively, enter one mod's own catalog URL: `https://raw.githubusercontent.com/<user>/<mod repository>/main/index.json`)*
-3. The mods immediately appear in the **Mods** tab with a 1-click install button!
 
 > [!NOTE]
 > **Automated Master Catalog Maintenance:**

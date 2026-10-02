@@ -51,9 +51,9 @@ jobs:
         run: python scripts/ci/lint-characters.py
 
       - name: No 'og:preserve-this' markers removed from goal_src
-        # Compared with the upstream mirror, the mother repository's master: a mod repository
-        # has no master branch of its own.
+        # Compared with upstream open-goal/jak-project master: a mod repository has no master
+        # branch, and a fork of the mother repository may not have one either.
         run: |
-          git fetch --quiet https://github.com/whozghiar/jak-project.git master
+          git fetch --quiet https://github.com/open-goal/jak-project.git master
           git diff FETCH_HEAD...HEAD -- goal_src > lint-changes.diff
           python scripts/ci/lint-gsrc-removals.py

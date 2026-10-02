@@ -8,7 +8,8 @@ branch, the way `git switch` moved between mod branches.
     task modding-switch -- jak2/features/haven-city-chaos   # a mod still on a branch
     task modding-switch -- --list                           # what you can switch to
 
-Every mod repository shares its history with whozghiar/jak-project, so one clone holds them all:
+Every mod repository shares its history with the mother repository (<owner>/jak-project), so one
+clone holds them all:
 each mod repository is a remote named after it, and its main branch is the local branch
 mods/<name>, created and fetched on first use; `git push` on it goes to that repository's main.
 iso_data/, decompiler_out/, out/ and the sccache cache stay shared by every mod.
@@ -30,6 +31,8 @@ import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+
+import sync_common
 
 if hasattr(sys.stdout, "reconfigure"):
     # Repository descriptions may hold characters a Windows console code page cannot encode.
@@ -55,8 +58,7 @@ def ref_exists(ref: str) -> bool:
 
 
 def owner() -> str:
-    m = re.search(r"github\.com[:/]([^/]+)/", git("remote", "get-url", "origin"))
-    return m.group(1) if m else "whozghiar"
+    return sync_common.github_owner(REPO_ROOT)
 
 
 def kb_is_submodule(ref: str) -> bool:

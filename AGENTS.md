@@ -2,7 +2,7 @@
 
 Instructions for any AI coding agent working in this repository. Claude Code loads this file
 through `CLAUDE.md`; Codex, Copilot and Cursor read it natively; Gemini CLI reads it through
-`.gemini/settings.json`. Source of truth: `master-dev` of `whozghiar/jak-project`.
+`.gemini/settings.json`. Source of truth: `master-dev` of the mother repository, `<owner>/jak-project`.
 
 ## 1. Project
 
@@ -14,9 +14,8 @@ Architecture details: [`docs/project-overview.md`](docs/project-overview.md).
 
 ## 2. Skills and knowledge base
 
-Skills live in [`.agents/skills/`](.agents/skills/), a git submodule of
-[`whozghiar/opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb) shared by
-this repository and every mod repository: one folder per skill with a `SKILL.md`, and the Lisp
+Skills live in [`.agents/skills/`](.agents/skills/), the knowledge-base git submodule
+(`opengoal-modding-kb`, URL in `.gitmodules`) shared by this repository and every mod repository: one folder per skill with a `SKILL.md`, and the Lisp
 wiki in `.agents/skills/goal-lisp/wiki/`. Gemini CLI, Codex, Copilot and Cursor read
 `.agents/skills/` natively. Claude Code reads `.claude/skills/`, which `task ai-link` fills with
 links; a SessionStart hook refreshes the submodule (`task kb-update`) and the links. Load a skill
@@ -44,7 +43,7 @@ only when its description matches the task.
    is the only place GOAL code examples live. Never invent an instruction.
 2. **Native non-regression.** A mod must not change default game behavior unless asked: every
    change ships off by default, gated behind the mod's runtime toggle.
-3. **In-game Mods toggle mandatory** for every `features/*` mod, switchable from a retail boot.
+3. **In-game Mods toggle mandatory** for every mod, switchable from a retail boot.
    - Jak 2 / Jak 3: the Mods menu opens with L3 + SELECT. See
      [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md) and
      [`docs/modding/templates/mod_menu.template.gc`](docs/modding/templates/mod_menu.template.gc);
@@ -93,7 +92,8 @@ task modding-sync-branch    # merge master-dev into the current mod branch
 Workflows live in `.github/workflows/`;
 [`docs/modding/guides/github_workflows.md`](docs/modding/guides/github_workflows.md) documents
 their triggers and access control. Workflows that only make sense in the mother repository are
-guarded with `github.repository == 'whozghiar/jak-project'`.
+guarded with `endsWith(github.repository, '/jak-project')`, so they also run in a fork of it.
+Scripts read the GitHub owner from the `origin` remote: never hardcode an account.
 
 ## 8. Git
 
@@ -103,10 +103,11 @@ Creating a mod step by step: [`docs/modding/guides/how_to_create_a_mod.md`](docs
 
 - `master` mirrors `open-goal/jak-project`. Never commit to it.
 - `master-dev` is the modding base. Every mod starts from it.
-- **One repository per mod:** `whozghiar/<game>-<slug>`, the slug being the mod's launcher
+- **One repository per mod:** `<owner>/<game>-<slug>`, the slug being the mod's launcher
   catalog key. In this clone it is the branch `mods/<name>`: switch with
   `task modding-switch -- <name>` (not a bare `git switch`), `git push` goes to its `main`, and
   `task modding-sync-branch -- --push` merges the latest `master-dev` into it.
+  `task modding-sync-all` does it for every mod repository; run it only when the user asks.
 - `task modding-new-mod` creates a mod repository (it asks for the game, name, description and
   visibility); `-- --from-branch <branch>` moves a mod branch into one. No branch is ever deleted.
 - Mods not moved yet live on branches named `jak[N]/[type]/[slug]`.

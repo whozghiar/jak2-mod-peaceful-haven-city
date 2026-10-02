@@ -1,27 +1,31 @@
 # How the Repository Works
 
-How `whozghiar/jak-project`, the mod repositories and the knowledge base fit together, and the
-commands for day-to-day work. For CI triggers and permissions see
-[`github_workflows.md`](github_workflows.md); for every task option see
-[`task_scripts_reference.md`](task_scripts_reference.md).
+How the mother repository, the mod repositories and the knowledge base fit together, what
+switching between them in one working directory implies, and the commands for day-to-day work.
+For CI triggers and permissions see [`github_workflows.md`](github_workflows.md); for every task
+option see [`task_scripts_reference.md`](task_scripts_reference.md); to start a mod from scratch
+see [`how_to_create_a_mod.md`](how_to_create_a_mod.md).
+
+`<owner>` below is the GitHub account that holds the mother repository: the original project's,
+or yours in a fork (see [section 7](#7-working-from-a-fork)).
 
 ## 1. Three kinds of repositories
 
 | Repository | Holds | Default branch |
 | :--- | :--- | :--- |
-| [`whozghiar/jak-project`](https://github.com/whozghiar/jak-project), the mother | `master`: a mirror of `open-goal/jak-project`, synced daily. `master-dev`: the modding base every mod starts from (engine and compiler patches, the Mods menu framework, scripts, `Taskfile.yml`, CI, `AGENTS.md`, templates, and the global launcher catalog `index.json`). | `master-dev` |
-| `whozghiar/<game>-<slug>`, one per mod | The mod: `master-dev` plus the mod's own changes, its README, releases and issues. `<slug>` is the mod's launcher catalog key, kept verbatim. Tagged with the `opengoal-mod` topic. | `main` |
-| [`whozghiar/opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb), the knowledge base | Agent skills and the verified Lisp wiki, mounted as the `.agents/skills` submodule in the mother and in every mod repository. | `main` |
+| `<owner>/jak-project`, the mother | `master`: a mirror of `open-goal/jak-project`, synced daily. `master-dev`: the modding base every mod starts from (engine and compiler patches, the Mods menu framework, scripts, `Taskfile.yml`, CI, `AGENTS.md`, templates, and the global launcher catalog `index.json`). | `master-dev` |
+| `<owner>/<game>-<slug>`, one per mod | The mod: `master-dev` plus the mod's own changes, its README, releases and issues. `<slug>` is the mod's launcher catalog key, kept verbatim. Tagged with the `opengoal-mod` topic. | `main` |
+| `opengoal-modding-kb`, the knowledge base | Agent skills and the verified Lisp wiki, mounted as the `.agents/skills` submodule in the mother and in every mod repository. Its URL is in `.gitmodules`. | `main` |
 
 ```text
-open-goal/jak-project --daily--> jak-project master --> jak-project master-dev --+--> jak2-blue-krimzon-guard (main)
-                                                                                 +--> jak2-dark-jak-enhanced (main)
+open-goal/jak-project --daily--> jak-project master --> jak-project master-dev --+--> jak2-mod-a (main)
+                                                                                 +--> jak2-mod-b (main)
                                                                                  +--> ... one repository per mod
 
 opengoal-modding-kb (main) --submodule .agents/skills--> every repository above
 ```
 
-## 2. One working directory for everything
+## 2. One working directory for every repository
 
 A mod repository shares its history with the mother, so one clone of `jak-project` holds every
 mod, the way it held mod branches:
@@ -32,35 +36,49 @@ mod, the way it held mod branches:
 | `mods/<name>` | The `main` branch of the mod repository `<name>`, which is a remote of the clone. `git push` on it goes to that repository's `main`. |
 | `jak[1-3]/<type>/<slug>` | Mods not moved to a repository yet, and the original branches of the moved ones, which are kept. |
 
-`iso_data/`, `decompiler_out/`, `out/` and the sccache cache stay shared by all of them, so no
-mod needs its own extraction.
-
 ### Switching
 
 ```bash
-task modding-switch -- --list                            # mod repositories, plus the mods still on a branch
-task modding-switch -- jak2-blue-krimzon-guard           # a mod repository, fetched on first use
-task modding-switch -- master-dev                        # back to the modding base
-task modding-switch -- jak2/features/haven-city-chaos    # a mod still on a branch
+task modding-switch -- --list                     # mod repositories, plus the mods still on a branch
+task modding-switch -- jak2-my-mod                # a mod repository, fetched on first use
+task modding-switch -- master-dev                 # back to the modding base
+task modding-switch -- jak2/features/old-mod      # a mod still on a branch
 ```
 
 Use `task modding-switch` rather than a bare `git switch`: on `master-dev` and in mod
 repositories `.agents/skills` is the knowledge-base submodule, while the mods still on a branch
 carry a plain copy of the skills at the same path, and git refuses to put one in place of the
 other. The task parks the submodule first (after checking it holds no unpushed knowledge-base
-work) and refreshes the knowledge base and the skill links after switching.
+work) and refreshes the knowledge base and the skill links after switching. Those older branches
+predate the task: to leave one, run `git switch master-dev` (or `git switch mods/<name>`), then
+`task kb-update`.
 
-Those older branches predate the task. To leave one, run `git switch master-dev` (or
-`git switch mods/<name>`), then `task kb-update`.
+### What a switch changes
 
-After switching, select the mod's game (`task set-game-jak2`, ...) and rebuild what differs:
-`task compile-check` for GOAL code, `task build-release-game` when the mod or the base changes
-C++.
+A switch replaces the tracked files (game code, engine, scripts, `Taskfile.yml`, docs, agent
+configuration) with the target's. Everything git ignores stays as it was: `iso_data/`,
+`decompiler_out/`, `out/` (the C++ build and the compiled game), the sccache cache, and the game
+selected with `task set-game-*`. No mod needs its own extraction, but the build outputs are the
+previous mod's until you rebuild what differs:
 
-A single mod can also be cloned on its own:
-`git clone --recurse-submodules https://github.com/whozghiar/<name>.git`. That clone needs its own
-`task extract`, and reaches `master-dev` through a `mother` remote that `task modding-sync-branch`
-adds on first use.
+| The two mods differ in | Run after the switch |
+| :--- | :--- |
+| Game code (`goal_src/`) | `task compile-check`, or `(mi)` in the REPL: changed files recompile. |
+| C++ (`game/`, `goalc/`, `common/`) | `task build-release-game`; sccache, when installed, serves the objects it compiled before. |
+| The decompiler (`decompiler/`, `decompiler/config/`) | `task build-release-decomp`, then `task extract`. |
+| Texture replacements (`custom_assets/<game>/texture_replacements/`) | `task extract`: textures are baked at extraction. |
+| The game | `task set-game-jak1`, `-jak2` or `-jak3`. |
+
+### Limits
+
+| Limit | Why | What to do |
+| :--- | :--- | :--- |
+| One mod at a time | A working directory has one checkout and one `out/`. | For two mods side by side, add a second working directory: `git worktree add ../jak-project-2 mods/<name>`. It starts without `iso_data/`, `decompiler_out/` and `out/`: copy `iso_data/<game>/` into it, then `task extract` and a full build. A branch can be checked out in only one of them. |
+| A clean tree to switch | The task refuses to switch over uncommitted changes or untracked files, so nothing is carried into the wrong mod. | Commit, or `git stash -u` and `git stash pop` when you come back. |
+| Extracted data lags behind | Textures and decompiler output stay as the last `task extract` made them. | Run `task extract` after switching to or from a mod that changes them; it takes minutes, not a full rebuild. |
+| Saves and settings are shared | `%APPDATA%/OpenGOAL/<game>/` holds the saves (a cold boot loads slot 1) and `pc-settings.gc` for every mod and for the stock game. | Before testing a mod, think about what the previous one saved: start a new game, or move the save files aside. |
+| One agent memory for every mod | Claude Code keeps its auto memory per folder, so every mod of the working directory shares it. | Keep a mod's notes in its `docs/modding/current_mod/`, and verified general facts in the knowledge base. |
+| The knowledge base moves on its own | Each repository pins a knowledge-base commit, and the session hook fast-forwards `.agents/skills` to the latest, so `git status` can show `.agents/skills` as modified. | Commit it with your next change, or leave it: the next sync with `master-dev` brings the base's pointer. |
 
 ## 3. Everyday tasks
 
@@ -83,38 +101,58 @@ On `mods/<name>`: edit, verify with `task compile-check`, ask for a cold boot
 (`task boot-game-retail` checks the Mods menu), commit, then `git push`. The golden rules are in
 [`AGENTS.md`](../../../AGENTS.md): runtime toggle, native non-regression, comments, change log.
 
-### Bring the latest modding base into a mod
+### Bring the latest modding base into the current mod
 
 ```bash
 task modding-sync-branch -- --push
 ```
 
-On `mods/<name>` this merges `origin/master-dev` under the mod-repository rules (the mod's
-`README.md`, `index.json` and `docs/modding/current_mod/` stay the mod's; shared docs and agent
-configuration come from `master-dev`; mother-only workflows are dropped) and pushes to the mod
-repository. Nothing syncs a mod automatically: a released mod can stay on the base it was built
-with until it needs something newer.
+On `mods/<name>` this merges `origin/master-dev` under the mod-repository rules and pushes to the
+mod repository:
+
+| Path | Rule |
+| :--- | :--- |
+| `README.md`, `index.json` | Always the mod's. |
+| `docs/modding/current_mod/` | The mod's version wins a conflict. |
+| `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.gemini/`, `.agents/` (the knowledge-base pointer), `scripts/ai/`, the other `docs/modding/` files, issue templates | `master-dev`'s version wins a conflict. |
+| Workflows | `release.yml`, `lint.yml` and `build.yml` only; the mother-only ones are removed. |
+| `master-dev`-only files (`.github/dependabot.yml`, the mod-suggestion issue form) | Removed. |
+| Everything else, game code included | A normal merge. A real conflict stops the sync for you to resolve. |
+
+### Bring it into every mod at once
+
+```bash
+task modding-sync-all -- --dry-run   # what would happen
+task modding-sync-all                # do it
+task modding-sync-all -- jak2-a jak2-b   # only these
+```
+
+For each mod repository (the `mods/*` branches, plus the `opengoal-mod` repositories of the
+account when `gh` is installed), the task fetches it, merges `origin/master-dev` with the same
+rules in a temporary worktree outside your working directory, and pushes the result to its `main`.
+It never touches your working directory, so it can run while you work. It skips a mod that is
+already up to date, one whose `mods/<name>` has commits you have not pushed (push them first),
+and the one you have checked out (sync that one with `task modding-sync-branch -- --push`). A mod
+that hits a real conflict is left as it was, nothing pushed, and the summary says which files to
+resolve by hand.
+
+Nothing syncs a mod on its own: a released mod can stay on the base it was built with until it
+needs something newer.
 
 ### Change the modding base
 
 Engine and compiler patches, the Mods menu framework, tooling and shared docs are committed on
-`master-dev` and pushed; each mod picks them up at its next sync. Reusable code first written in
+`master-dev` and pushed; the mods pick them up at their next sync. Reusable code first written in
 a mod goes to `master-dev` with `git cherry-pick`, since the repositories share their history.
 
 ### Release a mod
 
-Run `release.yml` from the mod repository's Actions tab, or:
-
-```bash
-gh workflow run release.yml -R whozghiar/<name> --ref main \
-  -f mod_name="Display Name" -f mod_description="One sentence." -f tag_name="v1.1.0"
-```
-
-The release is tagged `<slug>-vX.Y.Z`. The global catalog on `master-dev` picks it up within a
-day, or at once with
-`gh workflow run sync-global-catalog.yml -R whozghiar/jak-project --ref master-dev`. Releases
+Run `release.yml` from the mod repository: the steps are in
+[`how_to_create_a_mod.md`](how_to_create_a_mod.md#9-release), the pipeline and the inputs in
+[`mod_distribution_guide.md`](mod_distribution_guide.md). The release is tagged
+`<slug>-vX.Y.Z`, and the global catalog on `master-dev` lists it within a day. Releases
 published before a mod moved to its repository stay in `jak-project`, and the launcher keeps
-installing them. See [`mod_distribution_guide.md`](mod_distribution_guide.md).
+installing them.
 
 ### Record a discovery
 
@@ -138,21 +176,30 @@ Answer `private` when `task modding-new-mod` asks for the visibility, or pass `-
 change an existing repository, use its GitHub settings (Danger Zone, Change visibility) or:
 
 ```bash
-gh repo edit whozghiar/<name> --visibility private --accept-visibility-change-consequences
+gh repo edit <owner>/<name> --visibility private --accept-visibility-change-consequences
 ```
 
-A private mod works the same in this clone (`task modding-switch`, `git push`), but players
-cannot download its releases, so the global catalog leaves it out until it is public again. Its
-GitHub Actions runs count against the account's free minutes, which public repositories do not
-use. `whozghiar/jak-project` itself stays public: it is a fork of a public repository.
+| | Public | Private |
+| :--- | :--- | :--- |
+| Your work in this clone (`task modding-switch`, `git push`, `task modding-sync-all`) | Same | Same |
+| Who sees the code, issues and releases | Everyone | You and the collaborators you invite |
+| New releases in the launcher | Listed by the global catalog | Not listed: players cannot download them |
+| Releases published before the mod moved to its repository | Installable | Still installable: they belong to `jak-project` |
+| GitHub Actions minutes (lint on each push, releases) | Free | Taken from the account's monthly free minutes; Windows runners count double |
 
-### Group the repositories on GitHub
+Making a private mod public is the same command with `--visibility public`; the catalog lists its
+releases at its next daily run. The mother repository stays public: it is a fork of a public
+repository.
 
-GitHub has no folders. Every mod repository carries the `opengoal-mod` topic, so
-`https://github.com/whozghiar?tab=repositories&q=topic%3Aopengoal-mod` lists them all. For a
-dedicated page, a free GitHub organization can hold the mother repository, the mod repositories
-and the knowledge base; moving them there means updating the `whozghiar/jak-project` references
-in workflows, scripts and docs, and regenerating the catalog.
+### List every mod repository
+
+Every mod repository carries the `opengoal-mod` topic:
+
+```bash
+gh repo list <owner> --topic opengoal-mod
+```
+
+On GitHub, search `user:<owner> topic:opengoal-mod`.
 
 ### Retire an old branch
 
@@ -184,6 +231,9 @@ they belong to tags, not to the branch.
 - Agents may compile (`task compile-check`, `task build-release-game`,
   `task build-release-decomp`) and never launch the game: a PreToolUse hook blocks `gk`,
   `task boot-game*`, `task run-game` and debugger attach.
+- An agent works on whatever is checked out: switch before starting a session, and do not switch
+  while an agent is working. Two agents on two mods need two working directories (see the limits
+  in section 2).
 - The mods still on a branch predate this configuration; moving them to a repository brings it.
 
 ## 6. What runs on its own
@@ -195,5 +245,20 @@ they belong to tags, not to the branch.
 | Lint | On every push, in every repository |
 | Knowledge base refreshed, skills linked | At the start of each Claude Code session |
 
-Not automatic, on purpose: syncing a mod with `master-dev`, releases, the full build check
-(`build.yml`), and deleting branches.
+Not automatic, on purpose: syncing mods with `master-dev` (`task modding-sync-all` does it on
+demand), releases, the full build check (`build.yml`), and deleting branches.
+
+## 7. Working from a fork
+
+Nothing in the tooling names an account: scripts read the owner from the `origin` remote, and the
+mother-only workflows run in any repository named `jak-project`. A fork of the mother therefore
+works as is once you:
+
+1. fork it under the name `jak-project`, enable its GitHub Actions, and clone it with
+   `--recurse-submodules`;
+2. publish your own mods with `task modding-new-mod`, which creates them under your account;
+3. fork the knowledge base too if you want to record discoveries, and point `.agents/skills` at
+   your fork.
+
+The step-by-step procedure, with what the catalog and the launcher need, is in
+[`how_to_create_a_mod.md`](how_to_create_a_mod.md#0-set-up-once).

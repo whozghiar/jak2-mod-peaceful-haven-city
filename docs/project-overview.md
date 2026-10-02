@@ -40,7 +40,7 @@ All of the compiler source code is located in `goalc/`. The compiler is controll
 - **Linux:**
   Run the script: `scripts/shell/gc.sh`
 - **Windows:**
-  Run `scripts/batch/gc.bat` or `scripts/batch/gc-no-lt.bat` (the latter does not attempt to automatically attach to a running target).
+  Run `scripts/batch/gc.bat` (Jak 1), `gc2.bat` (Jak 2) or `gc3.bat` (Jak 3).
 
 ---
 
