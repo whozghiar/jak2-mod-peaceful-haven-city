@@ -351,6 +351,12 @@ none of its code (`mod-city-insurrection.gc`, its war-zone picker) is on this mo
 [`whozghiar/jak2-mod-haven-city-rebellion`](https://github.com/whozghiar/jak2-mod-haven-city-rebellion),
 whose technical README documents it.
 
+## 10. Change log
+
+| Area | Change |
+|---|---|
+| Texture pack (2026-10-02) | `blue-kg-vehicles-textures-v1.0.0.zip` rebuilt from the current `custom_assets/jak2/texture_replacements/_all/` (10 PNGs, unchanged since the pack published from the mother repository) with `package_texture_pack.py --from-source`, committed under `docs/modding/current_mod/texture_packs/`, and registered in `index.json`: download URL and website now on this repository, SHA-256 `11f0e0fe...92d3`. The cover inside the zip is now Blue Krimzon Guard's `mod_cover.png`. The same archive ships with Blue Krimzon Guard and the other city mod. `release.yml` attaches it to the next release and rewrites its URL with the real tag. |
+
 ---
 *(AI-assisted)*
 
