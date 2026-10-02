@@ -262,6 +262,19 @@ def main():
             else:
                 drop_path("index.json")
 
+            # The knowledge base is a submodule on master-dev. A mod that edited the plain copy its
+            # old branch carried comes out of the merge without the submodule (a file/directory
+            # conflict): put master-dev's pointer back in place of the old copy.
+            kb = ".agents/skills"
+            theirs = git_quiet("ls-tree", source_ref, kb).stdout.split()
+            staged = git_quiet("ls-files", "-s", "--", kb).stdout.split()
+            if theirs[:1] == ["160000"] and staged[:1] != ["160000"]:
+                git_quiet("rm", "-r", "-q", "-f", "--cached", "--", kb)
+                kb_dir = os.path.join(REPO_ROOT, kb)
+                if os.path.isdir(kb_dir) and not os.path.exists(os.path.join(kb_dir, ".git")):
+                    shutil.rmtree(kb_dir)
+                git_quiet("update-index", "--add", "--cacheinfo", f"160000,{theirs[2]},{kb}")
+
         # master-dev-only files ride along on a clean, no-conflict merge too:
         # strip them back out (see sync_common).
         for mdo_path in sync_common.MASTER_DEV_ONLY_PATHS:

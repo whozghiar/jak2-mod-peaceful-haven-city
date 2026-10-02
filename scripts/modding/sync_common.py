@@ -54,14 +54,12 @@ MASTER_DEV_ONLY_PATHS = [".github/ISSUE_TEMPLATE/mod-suggestion.yml", ".github/d
 # issue triage, the global catalog) stays off this list on purpose.
 ALLOWED_MOD_BRANCH_WORKFLOWS = {
     "release.yml",
-    "branch-sync-check.yaml",
     "lint.yml",
     "build.yml",
-    "sync-branch-with-master-dev.yml",
 }
 
 # A mod repository (one GitHub repository per mod, synced from the mother
-# repository's master-dev) has no branch badge and no in-repo branch sync.
+# repository's master-dev) carries the same three.
 ALLOWED_MOD_REPO_WORKFLOWS = {
     "release.yml",
     "lint.yml",
