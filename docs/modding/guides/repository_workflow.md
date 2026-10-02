@@ -34,24 +34,23 @@ mod, the way it held mod branches:
 | :--- | :--- |
 | `master-dev` | The modding base. |
 | `mods/<name>` | The `main` branch of the mod repository `<name>`, which is a remote of the clone. `git push` on it goes to that repository's `main`. |
-| `jak[1-3]/<type>/<slug>` | Mods not moved to a repository yet, and the original branches of the moved ones, which are kept. |
+| `archive/jak[1-3]/<type>/<slug>` (tags) | The old mod branches, archived: those of the moved mods, and the mods not moved yet. See [Archived branches](#archived-branches). |
 
 ### Switching
 
 ```bash
-task modding-switch -- --list                     # mod repositories, plus the mods still on a branch
+task modding-switch -- --list                     # the mod repositories
 task modding-switch -- jak2-mod-my-mod            # a mod repository, fetched on first use
 task modding-switch -- master-dev                 # back to the modding base
-task modding-switch -- jak2/features/old-mod      # a mod still on a branch
 ```
 
 Use `task modding-switch` rather than a bare `git switch`: on `master-dev` and in mod
-repositories `.agents/skills` is the knowledge-base submodule, while the mods still on a branch
-carry a plain copy of the skills at the same path, and git refuses to put one in place of the
-other. The task parks the submodule first (after checking it holds no unpushed knowledge-base
-work) and refreshes the knowledge base and the skill links after switching. Those older branches
-predate the task: to leave one, run `git switch master-dev` (or `git switch mods/<name>`), then
-`task kb-update`.
+repositories `.agents/skills` is the knowledge-base submodule, while an old mod branch restored
+from its archive carries a plain copy of the skills at the same path, and git refuses to put one
+in place of the other. The task parks the submodule first (after checking it holds no unpushed
+knowledge-base work) and refreshes the knowledge base and the skill links after switching. Old
+branches predate the task: to leave one, run `git switch master-dev` (or
+`git switch mods/<name>`), then `task kb-update`.
 
 ### What a switch changes
 
@@ -164,14 +163,15 @@ repository or a memory file. Follow the `kb` skill: find the topic, edit its ent
 the evidence, then commit and push from `.agents/skills`. Every repository picks it up at its
 next Claude Code session, or with `task kb-update`.
 
-### Move a mod still on a branch into its own repository
+### Move an archived mod into its own repository
 
 ```bash
 task modding-new-mod -- --from-branch jak2/features/<slug>
 ```
 
-The branch stays. Add `--prepare-only` to build and inspect `mods/<game>-mod-<slug>` before
-publishing it.
+It works from the branch or from its archive tag. Add `--prepare-only` to build and inspect
+`mods/<game>-mod-<slug>` before publishing it. A mod that was never released gets no
+`index.json`: its first release creates it.
 
 ### Private repositories
 
@@ -213,11 +213,19 @@ They share the mother's history the way forks do, so `git merge` syncs them the 
 `task modding-sync-all` stands in for GitHub's Sync fork button. What a fork would add is the
 "forked from" link and pull requests between the mother and a mod on GitHub's web interface.
 
-### Retire an old branch
+### Archived branches
 
-Nothing deletes branches. Once a mod's repository is confirmed, delete its original branch
-yourself with `git push origin --delete <branch>` and `git branch -D <branch>`. Its releases stay:
-they belong to tags, not to the branch.
+The mother repository keeps only `master` and `master-dev`. Every old mod branch is archived as
+the tag `archive/<branch>`, at the commit the branch pointed to, so nothing is lost and the
+branch list stays short. Releases made from those branches stay: they belong to their own tags.
+
+```bash
+git tag --list "archive/*"                                          # what is archived
+git switch -c jak2/features/<slug> archive/jak2/features/<slug>     # restore a branch
+```
+
+To archive a branch yourself: `git tag -a archive/<branch> -m "Archived" origin/<branch>`,
+`git push origin archive/<branch>`, then `git push origin --delete <branch>`.
 
 ## 4. Where things live
 
@@ -246,7 +254,7 @@ they belong to tags, not to the branch.
 - An agent works on whatever is checked out: switch before starting a session, and do not switch
   while an agent is working. Two agents on two mods need two working directories (see the limits
   in section 2).
-- The mods still on a branch predate this configuration; moving them to a repository brings it.
+- The archived mod branches predate this configuration; moving one to a repository brings it.
 
 ## 6. What runs on its own
 
@@ -258,7 +266,7 @@ they belong to tags, not to the branch.
 | Knowledge base refreshed, skills linked | At the start of each Claude Code session |
 
 Not automatic, on purpose: syncing mods with `master-dev` (`task modding-sync-all` does it on
-demand), releases, the full build check (`build.yml`), and deleting branches.
+demand), releases, the full build check (`build.yml`), and archiving branches.
 
 ## 7. Working from a fork
 

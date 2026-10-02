@@ -370,7 +370,7 @@ These tasks wrap specialized Python automation scripts located in `scripts/moddi
   | :--- | :--- | :--- |
   | *(none)* | | Ask for everything interactively. |
   | `--new <game>/<slug>` | String | Start a new mod from `master-dev` without questions, e.g. `jak2/my-mod`. |
-  | `--from-branch <branch>...` | One or more strings | Move existing mod branches (`jak[1-3]/<type>/<slug>`) into their own repositories. |
+  | `--from-branch <branch>...` | One or more strings | Move mod branches (`jak[1-3]/<type>/<slug>`, or their archive tags `archive/<branch>`) into their own repositories. |
   | `--description "<text>"` | String *(optional)* | One-line description (README overview of a new mod, and the repository description). |
   | `--youtube <url>` | String *(optional)* | Demo video URL embedded in a new mod's README. |
   | `--private` | Flag *(optional)* | Create private repositories; they stay out of the launcher catalog until made public. |
@@ -387,13 +387,13 @@ task modding-new-mod -- --new jak2/traffic-overhaul --description "Denser, smart
 
 ### 2. `task modding-switch -- <target>`
 - **Script:** [`switch_mod.py`](../../../scripts/modding/switch_mod.py)
-- **When?** Moving this working directory to another mod, back to `master-dev`, or to a mod still on a branch.
-- **Why?** Mod repositories share their history with this repository, so one clone holds them all and the extracted game data and build cache stay shared. A mod repository `<name>` becomes the remote `<name>` and the local branch `mods/<name>`, created and fetched on first use. The task also parks the knowledge-base submodule before switching to a mod still on a branch (those carry a plain copy of the skills at `.agents/skills`), then refreshes the knowledge base and the skill links. Those branches predate the task: to leave one, run `git switch master-dev`, then `task kb-update`.
+- **When?** Moving this working directory to another mod or back to `master-dev`.
+- **Why?** Mod repositories share their history with this repository, so one clone holds them all and the extracted game data and build cache stay shared. A mod repository `<name>` becomes the remote `<name>` and the local branch `mods/<name>`, created and fetched on first use. The task also parks the knowledge-base submodule before switching to an old mod branch restored from its archive tag (those carry a plain copy of the skills at `.agents/skills`), then refreshes the knowledge base and the skill links. Those branches predate the task: to leave one, run `git switch master-dev`, then `task kb-update`. An archived branch named as the target gets the command that restores it.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
   | `<target>` | Positional | A mod repository name (`jak2-mod-my-mod`), `master-dev`, or a branch name. |
-  | `--list` | Flag *(optional)* | List the mod repositories (here and on GitHub) and the mods still on a branch. |
+  | `--list` | Flag *(optional)* | List the mod repositories (here and on GitHub), and the old mod branches if any are left. |
 
 *Example:*
 ```bash
@@ -404,7 +404,7 @@ task modding-switch -- jak2-mod-my-mod
 
 ### 3. `task modding-sync-branch -- [options]`
 - **Script:** [`sync_branch_with_master_dev.py`](../../../scripts/modding/sync_branch_with_master_dev.py)
-- **When?** Whenever your mod needs the latest modding base. On `mods/<name>` it pushes to the mod repository's `main`; on a mod still on a branch, to that branch.
+- **When?** Whenever your mod needs the latest modding base. On `mods/<name>` it pushes to the mod repository's `main`; on a restored mod branch, to that branch.
 - **Why?** Merges `master-dev` into the current mod while preserving its root `README.md` and `index.json`, taking the shared agent configuration and docs from `master-dev`, and dropping the workflows and files that only belong to the mother repository.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |

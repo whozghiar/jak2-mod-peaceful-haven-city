@@ -7,7 +7,7 @@ Works on the checkout you run it from:
   (merges origin/master-dev, pushes to the mod repository's main),
 - a standalone clone of a mod repository (merges master-dev from its `mother` remote, added on
   first use), or
-- a mod still on a branch of the mother repository (merges origin/master-dev).
+- a mod branch of the mother repository, restored from its archive tag (merges origin/master-dev).
 
 By default, this script uses `git merge` (safe, non-destructive, preserves commit SHAs
 for published branches). It also offers an explicit `--rebase` option for developers

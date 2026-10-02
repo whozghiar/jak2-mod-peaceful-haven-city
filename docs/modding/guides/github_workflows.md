@@ -36,9 +36,9 @@ repositories created from its `master-dev`, which inherit the same files. The da
         |       on demand: task modding-sync-branch -- --push, or task modding-sync-all
         |       on push: lint.yml; by hand: build.yml, release.yml
         |
-        +--> mods not moved yet, branches jak[1-3]/<type>/<slug> of this repository
-                on demand: sync-branch-with-master-dev.yml or task modding-sync-branch
-                on push: branch-sync-check.yaml, lint.yml
+        +--> old mod branches jak[1-3]/<type>/<slug>: archived as tags archive/<branch>;
+                a restored branch gets sync-branch-with-master-dev.yml and
+                branch-sync-check.yaml
 
 GitHub Releases of any of these repositories
         --> sync-global-catalog.yml --> index.json on master-dev (one launcher URL for every mod)
@@ -89,7 +89,8 @@ syncs, and keeps only `release.yml`, `lint.yml` and `build.yml`
 
 ## 4. Mod branch sync (`sync-branch-with-master-dev.yml`)
 
-For the mods that still live on a branch of this repository.
+For a mod branch of this repository. The old ones are archived as tags `archive/<branch>`; this
+workflow serves a branch restored from one.
 
 - **Runs:** by hand only, owner only. Pick the branch with "Use workflow from".
 - **Does:** `python scripts/modding/sync_branch_with_master_dev.py --push`: merges

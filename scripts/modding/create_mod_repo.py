@@ -123,9 +123,9 @@ class Mod:
         m = re.match(r"^jak([123])/[^/]+/(.+)$", branch)
         if not m:
             sys.exit(f"{branch} is not a mod branch (jak[1-3]/<type>/<slug>)")
-        ref = f"origin/{branch}" if ref_exists(f"origin/{branch}") else branch
-        if not ref_exists(ref):
-            sys.exit(f"branch {branch} not found")
+        ref = next((r for r in (f"origin/{branch}", branch, f"refs/tags/archive/{branch}") if ref_exists(r)), None)
+        if not ref:
+            sys.exit(f"branch {branch} not found (nor its archive tag archive/{branch})")
         slug_from_name = m.group(2).replace("/", "-").replace("_", "-")
         mods = catalog_mods(ref)
         slug = next(iter(mods)) if len(mods) == 1 else slug_from_name
@@ -202,9 +202,19 @@ def prepare(mod: Mod, description: str, youtube: str, redo: bool = False) -> Non
     print(f"[OK] prepared {mod.branch}")
 
 
+def point_readme_at_repo(text: str, full_name: str) -> str:
+    """Replace the README's "Active Branch" lines (English and French) with the repository:
+    the branch is archived once the mod has moved."""
+    link = f"[`{full_name}`](https://github.com/{full_name})"
+    text = re.sub(r"^- \*\*Active Branch:\*\* `[^`]*`", f"- **Repository:** {link}", text, flags=re.M)
+    return re.sub(r"^- \*\*Branche Active :\*\* `[^`]*`", f"- **Dépôt :** {link}", text, flags=re.M)
+
+
 def adjust_migrated(mod: Mod) -> None:
     root = mod.worktree
     readme = root / "README.md"
+    readme.write_text(point_readme_at_repo(readme.read_text(encoding="utf-8"), mod.full_name),
+                      encoding="utf-8")
     lines = readme.read_text(encoding="utf-8").splitlines(keepends=True)
     lines = [l for l in lines if "img.shields.io/badge/Branch-" not in l]
     note = (f"> [!NOTE]\n> This mod moved from the `{mod.source_branch}` branch of "
@@ -222,8 +232,12 @@ def adjust_migrated(mod: Mod) -> None:
             git("rm", "-q", "--", path, cwd=root)
 
     index = root / "index.json"
-    catalog = json.loads(index.read_text(encoding="utf-8"))
+    catalog = json.loads(index.read_text(encoding="utf-8")) if index.is_file() else {"mods": {}}
     entry = catalog["mods"].get(mod.slug) or {}
+    if not entry and not released_entry(mod.slug):
+        # Never released: like a new mod, the repository gets its catalog at its first release.
+        git("rm", "-q", "--ignore-unmatch", "--", "index.json", cwd=root)
+        return
     # One repository, one mod: drop stale keys so the repository names exactly one mod.
     catalog["mods"] = {mod.slug: entry}
     # Older branch syncs overwrote the name with the slug or branch name: prefer the name players

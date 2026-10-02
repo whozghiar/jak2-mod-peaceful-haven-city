@@ -1,6 +1,6 @@
 # OpenGOAL Mod Distribution & Release Guide
 
-> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod repository (and the mods still on a branch of the mother repository)
+> - **Applies to:** Jak 1 / Jak 2 / Jak 3 (OpenGOAL PC Port) — every mod repository
 > - **Origin:** `master-dev`
 > - **Related Guide:** [`github_workflows.md`](github_workflows.md)
 
@@ -87,7 +87,7 @@ The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod
 1. Open the mod repository on GitHub and go to the **Actions** tab.
 2. In the left menu, select **🚀 Build & Release OpenGOAL Mod Package**.
 3. Click **Run workflow**:
-   - **Branch:** `main` (or, for a mod still on a branch here, that branch).
+   - **Branch:** `main`.
    - **Mod name (`mod_name`):** Mandatory. Display name (e.g. `Jak 3 JetBoard`).
    - **Short description (`mod_description`):** Mandatory. A 1-2 sentence summary embedded as-is into the `index.json` catalog.
    - **Version tag (`tag_name`):** Mandatory. An explicit tag (e.g. `v1.0.0`).

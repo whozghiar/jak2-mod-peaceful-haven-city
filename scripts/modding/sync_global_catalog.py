@@ -415,15 +415,36 @@ def collect_mods_from_releases(repo: str, token: str, offline: bool = False):
 
     print(f"  ✓ {tag}: aggregated successfully")
 
-  # A mod repository's own index.json is the source of truth for its name and description,
-  # and players are sent to the repository, even before its first release from there.
+  # A mod repository's own index.json is the source of truth for its name, description and
+  # cover, and players are sent to the repository, even before its first release from there.
+  # Releases made while the mod lived on a branch here point at that branch, which is archived
+  # once the mod has its repository.
+  repo_by_slug = {}
   for mod_repo in mod_repos:
     slug, entry = mod_repo_entry(mod_repo["full_name"], token)
+    if not slug:
+      continue
+    repo_by_slug[slug] = (mod_repo["html_url"], entry)
     if slug in aggregated_mods:
-      for attr in ("displayName", "description"):
+      for attr in ("displayName", "description", "coverArtUrl", "thumbnailArtUrl"):
         if entry.get(attr):
           aggregated_mods[slug][attr] = entry[attr]
       aggregated_mods[slug]["websiteUrl"] = mod_repo["html_url"]
+
+  def moved_to(branch: str):
+    """The (url, catalog entry) of the repository a mod branch moved to, if any."""
+    slug = re.sub(r"^jak[123]/(?:features|config)/", "", branch).replace("/", "-").replace("_", "-")
+    return repo_by_slug.get(slug)
+
+  # Texture packs released from a mod branch: same move, to the mod's repository.
+  for tp_info in aggregated_texture_packs.values():
+    m = re.search(r"/tree/(jak[123]/.+)$", tp_info.get("websiteUrl") or "")
+    if m and moved_to(m.group(1)):
+      tp_info["websiteUrl"] = moved_to(m.group(1))[0]
+    for attr in ("coverArtUrl", "thumbnailArtUrl"):
+      m = BRANCH_RE.search(tp_info.get(attr) or "")
+      if m and moved_to(m.group(1)) and moved_to(m.group(1))[1].get("coverArtUrl"):
+        tp_info[attr] = moved_to(m.group(1))[1]["coverArtUrl"]
 
   return aggregated_mods, aggregated_texture_packs
 

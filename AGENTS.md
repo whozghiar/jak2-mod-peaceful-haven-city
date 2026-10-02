@@ -109,8 +109,9 @@ Creating a mod step by step: [`docs/modding/guides/how_to_create_a_mod.md`](docs
   `task modding-sync-branch -- --push` merges the latest `master-dev` into it.
   `task modding-sync-all` does it for every mod repository; run it only when the user asks.
 - `task modding-new-mod` creates a mod repository (it asks for the game, name, description and
-  visibility); `-- --from-branch <branch>` moves a mod branch into one. No branch is ever deleted.
-- Mods not moved yet live on branches named `jak[N]/[type]/[slug]`.
+  visibility); `-- --from-branch <branch>` moves an archived mod branch into one.
+- The old mod branches (`jak[N]/[type]/[slug]`) are archived as tags `archive/<branch>`. Never
+  delete a branch or a tag without the user's agreement.
 - A mod has two documentation tiers: the root `README.md` for players (from
   [`docs/modding/templates/MOD_README.template.md`](docs/modding/templates/MOD_README.template.md))
   and `docs/modding/current_mod/<slug>_readme.md` for developers and agents.
