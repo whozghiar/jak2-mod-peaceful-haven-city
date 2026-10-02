@@ -2,9 +2,10 @@
 """
 Create a mod repository: one GitHub repository per mod, derived from master-dev.
 
+    python scripts/modding/create_mod_repo.py            # asks for game, name, description, visibility
+    python scripts/modding/create_mod_repo.py --new jak2/my-mod --description "One sentence." [--private]
     python scripts/modding/create_mod_repo.py --from-branch jak2/features/blue-krimzon-guard
     python scripts/modding/create_mod_repo.py --from-branch jak2/features/a jak2/features/b
-    python scripts/modding/create_mod_repo.py --new jak2/my-mod --description "One sentence."
     python scripts/modding/create_mod_repo.py --from-branch jak2/features/a --prepare-only
 
 The repository is named <game>-<slug>, the slug being the mod's launcher catalog key kept
@@ -21,9 +22,11 @@ Each mod goes through two steps, so a failed run can simply be re-run:
    master-dev under the mod-repository rules (sync_branch_with_master_dev.py --mod-repo), plus
    one commit with the repository-specific changes (README, catalog name and websiteUrl). On a
    re-run, a prepared branch that misses master-dev commits gets them merged in.
-2. Publish. Creates the public GitHub repository <owner>/<name> with the opengoal-mod topic,
-   which is how sync_global_catalog.py finds it, pushes mods/<name> as its main branch, and
-   sets mods/<name> to track and push to it. Needs gh, authenticated with `gh auth login`.
+2. Publish. Creates the GitHub repository <owner>/<name> (public unless --private) with the
+   opengoal-mod topic, which is how sync_global_catalog.py finds it, pushes mods/<name> as its
+   main branch, and sets mods/<name> to track and push to it. Needs gh, authenticated with
+   `gh auth login`. A private repository stays out of the launcher catalog: players cannot
+   download its releases until it is made public.
 """
 from __future__ import annotations
 
@@ -267,7 +270,7 @@ def adjust_new(mod: Mod, description: str, youtube: str) -> None:
     (root / "README.md").write_text(text, encoding="utf-8")
 
 
-def publish(mod: Mod, description: str) -> None:
+def publish(mod: Mod, description: str, private: bool = False) -> None:
     gh = shutil.which("gh")
     if not gh:
         sys.exit("gh not found: install it (scoop install gh) and run gh auth login")
@@ -275,7 +278,8 @@ def publish(mod: Mod, description: str) -> None:
         if not description:
             description = short_description(released_entry(mod.slug).get("description", "")) or \
                 f"OpenGOAL {GAME_LABELS[mod.game]} mod: {title(mod.slug)}."
-        subprocess.run([gh, "repo", "create", mod.full_name, "--public", "--description", description],
+        visibility = "--private" if private else "--public"
+        subprocess.run([gh, "repo", "create", mod.full_name, visibility, "--description", description],
                        check=True)
     subprocess.run([gh, "repo", "edit", mod.full_name, "--homepage", mod.url,
                     "--add-topic", MOD_REPO_TOPIC, "--add-topic", "opengoal", "--add-topic", mod.game],
@@ -292,14 +296,49 @@ def publish(mod: Mod, description: str) -> None:
     print(f"[OK] published {mod.url} (switch to it with: task modding-switch -- {mod.name})")
 
 
+def ask(prompt: str, default: str = "", pattern: str = "", hint: str = "") -> str:
+    while True:
+        answer = input(f"{prompt}{f' [{default}]' if default else ''}: ").strip() or default
+        if not pattern or re.fullmatch(pattern, answer):
+            return answer
+        print(f"  {hint}")
+
+
+def ask_new_mod(args: argparse.Namespace) -> None:
+    """Interactive creation, used when the task is run without arguments."""
+    if not shutil.which("gh"):
+        sys.exit("gh not found: install it (scoop install gh) and run gh auth login")
+    print("New mod repository, created from master-dev.\n")
+    game = ask("Game (jak1, jak2, jak3)", "jak2", r"jak[123]", "Answer jak1, jak2 or jak3.")
+    slug = ask("Mod name: letters, digits, - or _ (it names the repository)", "",
+               r"[A-Za-z0-9][A-Za-z0-9_-]*", "Use letters, digits, - and _, starting with a letter or digit.")
+    name = f"{owner()}/{game}-{slug}"
+    if subprocess.run(["gh", "repo", "view", name], capture_output=True).returncode == 0:
+        sys.exit(f"{name} already exists: switch to it with task modding-switch -- {game}-{slug}")
+    args.description = ask("One sentence for players (README overview and repository description)")
+    args.youtube = ask("Demo video URL (optional)")
+    visibility = ask("Visibility (public, private)", "public", r"public|private", "Answer public or private.")
+    args.private = visibility == "private"
+    args.new = f"{game}/{slug}"
+    print(f"\nRepository : {name} ({visibility})"
+          f"\nLocal branch: mods/{game}-{slug}"
+          f"\nCatalog key: {slug}")
+    if args.private:
+        print("Private: players cannot install it from the launcher until you make it public.")
+    if ask("Create it? (y, n)", "y", r"[yYnN]", "Answer y or n.").lower() != "y":
+        sys.exit("Cancelled.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    source = parser.add_mutually_exclusive_group(required=True)
+    source = parser.add_mutually_exclusive_group()
     source.add_argument("--from-branch", nargs="+", metavar="BRANCH",
                         help="move existing mod branches (jak[1-3]/<type>/<slug>) to their own repositories")
     source.add_argument("--new", metavar="GAME/SLUG", help="start a new mod, e.g. jak2/my-mod")
     parser.add_argument("--description", default="", help="one-line description (new mod, or repository description)")
     parser.add_argument("--youtube", default="", help="demo video URL (new mod)")
+    parser.add_argument("--private", action="store_true",
+                        help="create private repositories (kept out of the launcher catalog until made public)")
     parser.add_argument("--prepare-only", action="store_true", help="build the local branches, publish nothing")
     parser.add_argument("--redo", action="store_true",
                         help="rebuild prepared branches that were never published")
@@ -307,13 +346,17 @@ def main() -> int:
 
     if git("status", "--porcelain", "--ignore-submodules=all"):
         sys.exit("Commit or stash your changes first: the mod repositories are built from master-dev.")
+    if not args.from_branch and not args.new:
+        if not sys.stdin.isatty():
+            sys.exit("Give --new <game>/<slug> or --from-branch <branch> (no terminal to ask in).")
+        ask_new_mod(args)
 
     mods = [Mod.from_branch(b) for b in args.from_branch] if args.from_branch else [Mod.new(args.new)]
     for mod in mods:
         print(f"\n=== {mod.full_name} (catalog key {mod.slug}) ===")
         prepare(mod, args.description, args.youtube, args.redo)
         if not args.prepare_only:
-            publish(mod, args.description)
+            publish(mod, args.description, args.private)
     if args.prepare_only:
         print("\nPrepared only. Publish with the same command without --prepare-only.")
     return 0

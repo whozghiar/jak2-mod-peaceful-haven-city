@@ -99,6 +99,7 @@ guarded with `github.repository == 'whozghiar/jak-project'`.
 
 How the mother repository, the mod repositories and the knowledge base fit together, with the
 day-to-day commands: [`docs/modding/guides/repository_workflow.md`](docs/modding/guides/repository_workflow.md).
+Creating a mod step by step: [`docs/modding/guides/how_to_create_a_mod.md`](docs/modding/guides/how_to_create_a_mod.md).
 
 - `master` mirrors `open-goal/jak-project`. Never commit to it.
 - `master-dev` is the modding base. Every mod starts from it.
@@ -106,8 +107,8 @@ day-to-day commands: [`docs/modding/guides/repository_workflow.md`](docs/modding
   catalog key. In this clone it is the branch `mods/<name>`: switch with
   `task modding-switch -- <name>` (not a bare `git switch`), `git push` goes to its `main`, and
   `task modding-sync-branch -- --push` merges the latest `master-dev` into it.
-- `task modding-new-mod -- --new jak2/<slug>` creates a mod repository;
-  `-- --from-branch <branch>` moves a mod branch into one. No branch is ever deleted.
+- `task modding-new-mod` creates a mod repository (it asks for the game, name, description and
+  visibility); `-- --from-branch <branch>` moves a mod branch into one. No branch is ever deleted.
 - Mods not moved yet live on branches named `jak[N]/[type]/[slug]`.
 - A mod has two documentation tiers: the root `README.md` for players (from
   [`docs/modding/templates/MOD_README.template.md`](docs/modding/templates/MOD_README.template.md))

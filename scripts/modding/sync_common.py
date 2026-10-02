@@ -21,7 +21,9 @@ import os
 # explicitly `git rm` them back out after merging. Keep this list short: it
 # is a statement of "this file does not belong on a mod branch", not a
 # general-purpose ignore list.
-MASTER_DEV_ONLY_PATHS = [".github/ISSUE_TEMPLATE/mod-suggestion.yml"]
+# dependabot.yml: version-update PRs for GitHub Actions belong to the mother repository only;
+# in every mod repository it opened the same handful of PRs, one branch each.
+MASTER_DEV_ONLY_PATHS = [".github/ISSUE_TEMPLATE/mod-suggestion.yml", ".github/dependabot.yml"]
 
 # The only workflow files a mod branch is meant to carry (see
 # classify_conflict_path's "drop" rule below and AGENTS.md for why this fork

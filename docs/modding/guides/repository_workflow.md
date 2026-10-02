@@ -68,13 +68,14 @@ adds on first use.
 
 ```bash
 task modding-switch -- master-dev
-task modding-new-mod -- --new jak2/my-mod --description "One sentence for players."
-task modding-switch -- jak2-my-mod
+task modding-new-mod
 ```
 
-This creates `whozghiar/jak2-my-mod` from `master-dev`, with a README from
-[`MOD_README.template.md`](../templates/MOD_README.template.md) and the `opengoal-mod` topic, and
-the local branch `mods/jak2-my-mod`.
+The task asks for the game, the mod name (it names the repository `<game>-<name>`), one sentence
+for players and the visibility, then creates the repository from `master-dev` with a README from
+[`MOD_README.template.md`](../templates/MOD_README.template.md), the `opengoal-mod` topic, and the
+local branch `mods/<game>-<name>`. The whole procedure, through to the release, is in
+[`how_to_create_a_mod.md`](how_to_create_a_mod.md).
 
 ### Work on a mod
 
@@ -130,6 +131,28 @@ task modding-new-mod -- --from-branch jak2/features/<slug>
 
 The branch stays. Add `--prepare-only` to build and inspect `mods/<game>-<slug>` before
 publishing it.
+
+### Private repositories
+
+Answer `private` when `task modding-new-mod` asks for the visibility, or pass `--private`. To
+change an existing repository, use its GitHub settings (Danger Zone, Change visibility) or:
+
+```bash
+gh repo edit whozghiar/<name> --visibility private --accept-visibility-change-consequences
+```
+
+A private mod works the same in this clone (`task modding-switch`, `git push`), but players
+cannot download its releases, so the global catalog leaves it out until it is public again. Its
+GitHub Actions runs count against the account's free minutes, which public repositories do not
+use. `whozghiar/jak-project` itself stays public: it is a fork of a public repository.
+
+### Group the repositories on GitHub
+
+GitHub has no folders. Every mod repository carries the `opengoal-mod` topic, so
+`https://github.com/whozghiar?tab=repositories&q=topic%3Aopengoal-mod` lists them all. For a
+dedicated page, a free GitHub organization can hold the mother repository, the mod repositories
+and the knowledge base; moving them there means updating the `whozghiar/jak-project` references
+in workflows, scripts and docs, and regenerating the catalog.
 
 ### Retire an old branch
 

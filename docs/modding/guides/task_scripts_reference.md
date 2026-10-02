@@ -357,25 +357,28 @@ These tasks wrap specialized Python automation scripts located in `scripts/moddi
 
 ---
 
-### 1. `task modding-new-mod -- (--new <game>/<slug> | --from-branch <branch>...) [options]`
+### 1. `task modding-new-mod [-- options]`
 - **Script:** [`create_mod_repo.py`](../../../scripts/modding/create_mod_repo.py)
-- **When?** Starting a new mod, or moving a mod that still lives on a branch of this repository into its own repository.
+- **When?** Starting a new mod (run it without arguments: it asks for the game, the mod name, one sentence for players, the visibility, then confirms), or moving a mod that still lives on a branch of this repository into its own repository.
 - **Why?** Every mod lives in its own GitHub repository, `<owner>/<game>-<slug>`, where the slug is the mod's launcher catalog key kept verbatim. In this clone that repository is the remote `<name>` and the local branch `mods/<name>` (see `task modding-switch`). Nothing is deleted: the source branch and `mods/<name>` both stay. Two steps, so a failed run can simply be re-run:
   1. **Prepare (local):** builds `mods/<name>` in a temporary worktree in the system temp folder (outside your editor's workspace): the mod merged with the local `master-dev` under the mod-repository rules, plus one commit with the repository-specific changes (README from the template or a "moved from" note, catalog name and `websiteUrl`). Re-running it merges newer `master-dev` commits into a prepared branch.
   2. **Publish:** creates the public repository with the `opengoal-mod` topic (how the global catalog finds it), pushes `mods/<name>` as its `main`, and sets `mods/<name>` to track and push to it. Needs `gh`, authenticated with `gh auth login`.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
-  | `--new <game>/<slug>` | String | Start a new mod from `master-dev`, e.g. `jak2/my-mod`. |
+  | *(none)* | | Ask for everything interactively. |
+  | `--new <game>/<slug>` | String | Start a new mod from `master-dev` without questions, e.g. `jak2/my-mod`. |
   | `--from-branch <branch>...` | One or more strings | Move existing mod branches (`jak[1-3]/<type>/<slug>`) into their own repositories. |
   | `--description "<text>"` | String *(optional)* | One-line description (README overview of a new mod, and the repository description). |
   | `--youtube <url>` | String *(optional)* | Demo video URL embedded in a new mod's README. |
+  | `--private` | Flag *(optional)* | Create private repositories; they stay out of the launcher catalog until made public. |
   | `--prepare-only` | Flag *(optional)* | Build the local branches and publish nothing. |
   | `--redo` | Flag *(optional)* | Rebuild prepared branches that were never published. |
 
 *Example:*
 ```bash
-task modding-new-mod -- --new jak2/traffic-overhaul --description "Denser, smarter Haven City traffic."
+task modding-new-mod
+task modding-new-mod -- --new jak2/traffic-overhaul --description "Denser, smarter Haven City traffic." --private
 ```
 
 ---

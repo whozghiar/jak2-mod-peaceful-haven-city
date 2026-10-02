@@ -166,7 +166,8 @@ tasks:
   # Thin wrappers over scripts/modding/*.py so the mod workflow is discoverable via
   # `task --list`. Pass script args after `--`, e.g. `task modding-new-mod -- --new jak2/my-mod`.
   modding-new-mod:
-    desc: "Create a mod repository (GitHub, one per mod) from master-dev, or move a mod branch into one (scripts/modding/create_mod_repo.py). e.g. -- --new jak2/my-mod, or -- --from-branch jak2/features/foo"
+    desc: "Create a mod repository (GitHub, one per mod) from master-dev: asks for the game, mod name, description and visibility; or -- --from-branch jak2/features/foo moves a mod branch into one (scripts/modding/create_mod_repo.py)"
+    interactive: true
     cmds:
       - "{{.PYTHON}} ./scripts/modding/create_mod_repo.py {{.CLI_ARGS}}"
   modding-switch:
