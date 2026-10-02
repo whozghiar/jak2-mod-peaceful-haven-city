@@ -15,7 +15,8 @@ source mod branch and mods/<name> both stay.
 
 Each mod goes through two steps, so a failed run can simply be re-run:
 
-1. Prepare (local only). A temporary worktree next to this repository builds mods/<name>: the
+1. Prepare (local only). A temporary worktree in the system temp folder (outside any editor
+   workspace, so no IDE scans its checkout) builds mods/<name>: the
    mod (an existing mod branch, or master-dev with a README from the template), merged with
    master-dev under the mod-repository rules (sync_branch_with_master_dev.py --mod-repo), plus
    one commit with the repository-specific changes (README, catalog name and websiteUrl). On a
@@ -32,13 +33,14 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import sync_common
 from update_mod_catalog import sanitize_source_name
 
 MOTHER_ROOT = Path(__file__).resolve().parents[2]
-WORKTREES = MOTHER_ROOT.parent / ".mod-repo-worktrees"
+WORKTREES = Path(tempfile.gettempdir()) / "og-mod-worktrees"
 TEMPLATE = MOTHER_ROOT / "docs" / "modding" / "templates" / "MOD_README.template.md"
 SYNC_SCRIPT = MOTHER_ROOT / "scripts" / "modding" / "sync_branch_with_master_dev.py"
 GAME_LABELS = {"jak1": "Jak 1", "jak2": "Jak 2", "jak3": "Jak 3"}

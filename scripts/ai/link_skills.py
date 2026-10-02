@@ -9,8 +9,9 @@ a junction on Windows (no admin rights or Developer Mode needed), a relative sym
 The links are never committed: git cannot store junctions, and with core.symlinks=false (the
 Git for Windows default) a committed symlink checks out as a plain text file.
 
-Run it with `task ai-link`. The SessionStart hook in .claude/settings.json also runs it with
---quiet, so a fresh clone gets its links during the first Claude Code session.
+Run it with `task ai-link`; `task kb-update` (kb_sync.py, also run by the Claude Code
+SessionStart hook) runs it after refreshing the knowledge base. --remove drops every link,
+before switching to a branch that predates this layout (see scripts/modding/switch_mod.py).
 """
 from __future__ import annotations
 
@@ -82,11 +83,17 @@ def sync(tool_dir: Path, skills: list[Path], log) -> None:
         log(f"linked {link.relative_to(REPO_ROOT)} -> {skill.relative_to(REPO_ROOT)}")
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--quiet", action="store_true", help="print nothing unless something fails")
-    args = parser.parse_args()
-    log = (lambda message: None) if args.quiet else print
+def relink(quiet: bool = False, remove: bool = False) -> int:
+    """Link every shared skill (or, with remove, drop every link) in each tool's skills folder."""
+    log = (lambda message: None) if quiet else print
+    if remove:
+        # Before switching to a branch that predates this layout, where nothing ignores the links.
+        for tool_dir in TOOL_SKILL_DIRS:
+            for entry in (tool_dir.iterdir() if tool_dir.is_dir() else []):
+                if is_link(entry):
+                    remove_link(entry)
+        log("removed the skill links")
+        return 0
 
     if not SHARED_SKILLS.is_dir():
         print(f"error: {SHARED_SKILLS.relative_to(REPO_ROOT)} not found", file=sys.stderr)
@@ -102,6 +109,14 @@ def main() -> int:
 
     log(f"{len(skills)} shared skills exposed in: " + ", ".join(str(d.relative_to(REPO_ROOT)) for d in TOOL_SKILL_DIRS))
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
+    parser.add_argument("--quiet", action="store_true", help="print nothing unless something fails")
+    parser.add_argument("--remove", action="store_true", help="remove every link instead of creating them")
+    args = parser.parse_args()
+    return relink(args.quiet, args.remove)
 
 
 if __name__ == "__main__":

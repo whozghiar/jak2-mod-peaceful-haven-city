@@ -8,8 +8,8 @@ needed, puts it on `main` when that loses nothing, and fast-forwards `main` to o
 It never discards work: commits or edits that block a fast-forward are left alone and reported.
 Offline, it keeps the current copy.
 
-Run it with `task kb-update`. The SessionStart hook in .claude/settings.json runs it with
---quiet before linking the skills for Claude Code.
+It then refreshes the skill links for Claude Code (link_skills.py). Run it with
+`task kb-update`; the SessionStart hook in .claude/settings.json runs it with --quiet.
 """
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+
+import link_skills
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 KB = ".agents/skills"
@@ -26,11 +28,8 @@ def git(*args: str, cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--quiet", action="store_true", help="print nothing unless something needs attention")
-    args = parser.parse_args()
-    log = (lambda message: None) if args.quiet else print
+def update(quiet: bool) -> int:
+    log = (lambda message: None) if quiet else print
     kb = REPO_ROOT / KB
 
     if not (kb / ".git").exists():
@@ -66,6 +65,15 @@ def main() -> int:
 
     log(f"{KB} is at {git('log', '-1', '--format=%h %s', cwd=kb).stdout.strip()}")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
+    parser.add_argument("--quiet", action="store_true", help="print nothing unless something needs attention")
+    args = parser.parse_args()
+    code = update(args.quiet)
+    # The links follow the folder's contents, so refresh them whatever happened above.
+    return code or link_skills.relink(args.quiet)
 
 
 if __name__ == "__main__":

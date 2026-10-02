@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"$CLAUDE_PROJECT_DIR/scripts/ai/kb_sync.py\" --quiet; python \"$CLAUDE_PROJECT_DIR/scripts/ai/link_skills.py\" --quiet"
+            "command": "python \"$CLAUDE_PROJECT_DIR/scripts/ai/kb_sync.py\" --quiet"
           }
         ]
       }

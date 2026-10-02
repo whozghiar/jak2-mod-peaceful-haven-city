@@ -361,7 +361,7 @@ These tasks wrap specialized Python automation scripts located in `scripts/moddi
 - **Script:** [`create_mod_repo.py`](../../../scripts/modding/create_mod_repo.py)
 - **When?** Starting a new mod, or moving a mod that still lives on a branch of this repository into its own repository.
 - **Why?** Every mod lives in its own GitHub repository, `<owner>/<game>-<slug>`, where the slug is the mod's launcher catalog key kept verbatim. In this clone that repository is the remote `<name>` and the local branch `mods/<name>` (see `task modding-switch`). Nothing is deleted: the source branch and `mods/<name>` both stay. Two steps, so a failed run can simply be re-run:
-  1. **Prepare (local):** builds `mods/<name>` in a temporary worktree next to this repository: the mod merged with the local `master-dev` under the mod-repository rules, plus one commit with the repository-specific changes (README from the template or a "moved from" note, catalog name and `websiteUrl`). Re-running it merges newer `master-dev` commits into a prepared branch.
+  1. **Prepare (local):** builds `mods/<name>` in a temporary worktree in the system temp folder (outside your editor's workspace): the mod merged with the local `master-dev` under the mod-repository rules, plus one commit with the repository-specific changes (README from the template or a "moved from" note, catalog name and `websiteUrl`). Re-running it merges newer `master-dev` commits into a prepared branch.
   2. **Publish:** creates the public repository with the `opengoal-mod` topic (how the global catalog finds it), pushes `mods/<name>` as its `main`, and sets `mods/<name>` to track and push to it. Needs `gh`, authenticated with `gh auth login`.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
@@ -422,7 +422,7 @@ task modding-sync-branch -- --push
 ### 4. `task kb-update` and `task ai-link`
 - **Scripts:** [`kb_sync.py`](../../../scripts/ai/kb_sync.py), [`link_skills.py`](../../../scripts/ai/link_skills.py)
 - **When?** Rarely by hand: the Claude Code SessionStart hook runs both at the start of every session.
-- **Why?** `.agents/skills/` is the knowledge-base submodule ([`opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb)). `kb-update` initialises it, puts it on `main` and fast-forwards it, without ever discarding local commits or edits. `ai-link` then links each skill into `.claude/skills/`, the only folder Claude Code reads. To record a discovery in the knowledge base, follow the `kb` skill.
+- **Why?** `.agents/skills/` is the knowledge-base submodule ([`opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb)). `kb-update` initialises it, puts it on `main` and fast-forwards it, without ever discarding local commits or edits, then links each skill into `.claude/skills/`, the only folder Claude Code reads. `ai-link` does the linking alone. To record a discovery in the knowledge base, follow the `kb` skill.
 
 *Example:*
 ```bash

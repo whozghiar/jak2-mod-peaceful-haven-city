@@ -4,9 +4,9 @@ name: 🧪 Lint
 # trailing whitespace in goal_src, forbidden assert() calls in the C++ engine,
 # translation-file characters/autoglottonyms outside each game's allowed set,
 # and accidental removal of `og:preserve-this` markers in goal_src. Runs on
-# every push, on every branch (this file is synced onto every mod branch by
-# the modding sync scripts, see scripts/modding/sync_common.py) - each check
-# finishes in seconds, there is no build involved.
+# every push, in this repository and in every mod repository (the modding
+# sync scripts carry this file, see scripts/modding/sync_common.py) - each
+# check finishes in seconds, there is no build involved.
 
 on:
   push:
@@ -51,7 +51,9 @@ jobs:
         run: python scripts/ci/lint-characters.py
 
       - name: No 'og:preserve-this' markers removed from goal_src
+        # Compared with the upstream mirror, the mother repository's master: a mod repository
+        # has no master branch of its own.
         run: |
-          git fetch origin master
-          git diff origin/master...HEAD -- goal_src > lint-changes.diff
+          git fetch --quiet https://github.com/whozghiar/jak-project.git master
+          git diff FETCH_HEAD...HEAD -- goal_src > lint-changes.diff
           python scripts/ci/lint-gsrc-removals.py

@@ -25,10 +25,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    # Repository descriptions may hold characters a Windows console code page cannot encode.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KB = ".agents/skills"
@@ -97,10 +102,10 @@ def resolve(target: str) -> str:
              "master-dev, or a branch name (see: task modding-switch -- --list)")
 
 
-def run_script(relative: str) -> None:
+def run_script(relative: str, *args: str) -> None:
     script = REPO_ROOT / relative
     if script.is_file():
-        subprocess.run([sys.executable, str(script), "--quiet"], cwd=REPO_ROOT)
+        subprocess.run([sys.executable, str(script), "--quiet", *args], cwd=REPO_ROOT)
 
 
 def switch(branch: str) -> None:
@@ -114,10 +119,11 @@ def switch(branch: str) -> None:
                      "Commit and push it first (see the kb skill).")
         print(f"{branch} predates the knowledge-base submodule: parking {KB} ...")
         git("submodule", "deinit", "-q", "-f", KB)
+        # Nothing ignores .claude/skills/ links on such a branch: drop them (task kb-update relinks).
+        run_script("scripts/ai/link_skills.py", "--remove")
     git("switch", "-q", branch)
     if kb_is_submodule("HEAD"):
-        run_script("scripts/ai/kb_sync.py")
-    run_script("scripts/ai/link_skills.py")
+        run_script("scripts/ai/kb_sync.py")  # also refreshes the skill links
     print(f"Now on {branch} ({git('log', '-1', '--format=%h %s')})")
     if not (REPO_ROOT / "scripts" / "modding" / "switch_mod.py").is_file():
         print("This branch predates task modding-switch. To leave it: "
@@ -128,12 +134,18 @@ def list_targets() -> None:
     local = {b[len("mods/"):] for b in git("for-each-ref", "--format=%(refname:short)", "refs/heads/mods/").split()}
     published = {}
     try:
-        req = urllib.request.Request(f"https://api.github.com/users/{owner()}/repos?per_page=100",
-                                     headers={"Accept": "application/vnd.github+json", "User-Agent": "modding-switch"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            for repo in json.loads(resp.read().decode("utf-8")):
-                if MOD_REPO_TOPIC in (repo.get("topics") or []):
-                    published[repo["name"]] = repo.get("description") or ""
+        if shutil.which("gh"):
+            out = subprocess.run(["gh", "repo", "list", owner(), "--topic", MOD_REPO_TOPIC, "--limit", "200",
+                                  "--json", "name,description"], capture_output=True, text=True,
+                                 encoding="utf-8", check=True).stdout
+            repos = json.loads(out)
+        else:
+            req = urllib.request.Request(f"https://api.github.com/users/{owner()}/repos?per_page=100",
+                                         headers={"Accept": "application/vnd.github+json", "User-Agent": "modding-switch"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                repos = [r for r in json.loads(resp.read().decode("utf-8"))
+                         if MOD_REPO_TOPIC in (r.get("topics") or [])]
+        published = {r["name"]: r.get("description") or "" for r in repos}
     except Exception as err:
         print(f"(could not list GitHub repositories: {err})")
     current = git("branch", "--show-current")
@@ -147,9 +159,13 @@ def list_targets() -> None:
         "for-each-ref", "--format=%(refname:short)", "refs/heads/jak1", "refs/heads/jak2", "refs/heads/jak3",
         "refs/remotes/origin/jak1", "refs/remotes/origin/jak2", "refs/remotes/origin/jak3").split()})
     if branches:
-        print("\nMods still on a branch:")
+        print("\nMod branches (kept; a mod moved to its own repository says where):")
+        moved = {n.lower(): n for n in local | set(published)}
         for b in branches:
-            print(f" {'*' if current == b else ' '} {b}")
+            m = re.match(r"^(jak[123])/[^/]+/(.+)$", b)
+            repo = moved.get(f"{m.group(1)}-{m.group(2).replace('/', '-').replace('_', '-')}".lower()) if m else None
+            note = f"moved to {repo}" if repo else ""
+            print(f" {'*' if current == b else ' '} {b:40} {note}")
 
 
 def main() -> int:
