@@ -169,6 +169,10 @@ tasks:
     desc: "Create a mod repository (GitHub, one per mod) from master-dev, or move a mod branch into one (scripts/modding/create_mod_repo.py). e.g. -- --new jak2/my-mod, or -- --from-branch jak2/features/foo"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/create_mod_repo.py {{.CLI_ARGS}}"
+  modding-switch:
+    desc: "Switch this working directory to a mod repository (mods/<name>, fetched on first use), master-dev or a mod branch (scripts/modding/switch_mod.py). e.g. -- jak2-blue-krimzon-guard, or -- --list"
+    cmds:
+      - "{{.PYTHON}} ./scripts/modding/switch_mod.py {{.CLI_ARGS}}"
   modding-sync-branch:
     desc: "Merge master-dev into the current mod (scripts/modding/sync_branch_with_master_dev.py): a mod branch here, or a mod repository with -- --remote mother. --rebase / --push accepted after --"
     cmds:

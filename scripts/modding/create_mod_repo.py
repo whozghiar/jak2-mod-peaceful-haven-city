@@ -7,20 +7,22 @@ Create a mod repository: one GitHub repository per mod, derived from master-dev.
     python scripts/modding/create_mod_repo.py --new jak2/my-mod --description "One sentence."
     python scripts/modding/create_mod_repo.py --from-branch jak2/features/a --prepare-only
 
-Each mod goes through two steps, each skipped when already done, so a failed run can simply
-be re-run:
-
-1. Prepare (local only). A temporary worktree next to this repository builds the local branch
-   mod-repo/<name>: the mod (an existing mod branch, or master-dev with a README from the
-   template), merged with master-dev under the mod-repository rules
-   (sync_branch_with_master_dev.py --mod-repo), plus one commit with the repository-specific
-   changes (README, catalog name and websiteUrl). The worktree is removed afterwards.
-2. Publish. Creates the public GitHub repository <owner>/<name> with the opengoal-mod topic,
-   which is how sync_global_catalog.py finds it, and pushes mod-repo/<name> as its main
-   branch. Needs gh, authenticated with `gh auth login`.
-
 The repository is named <game>-<slug>, the slug being the mod's launcher catalog key kept
-verbatim (jak3-jetBoard keeps its capital B), so the launcher keeps seeing the same mod.
+verbatim (jak3-jetBoard keeps its capital B), so the launcher keeps seeing the same mod. In this
+clone, the mod repository is the remote <name> and its main branch is the local branch
+mods/<name>: switch to it with `task modding-switch -- <name>`. Nothing is ever deleted: the
+source mod branch and mods/<name> both stay.
+
+Each mod goes through two steps, so a failed run can simply be re-run:
+
+1. Prepare (local only). A temporary worktree next to this repository builds mods/<name>: the
+   mod (an existing mod branch, or master-dev with a README from the template), merged with
+   master-dev under the mod-repository rules (sync_branch_with_master_dev.py --mod-repo), plus
+   one commit with the repository-specific changes (README, catalog name and websiteUrl). On a
+   re-run, a prepared branch that misses master-dev commits gets them merged in.
+2. Publish. Creates the public GitHub repository <owner>/<name> with the opengoal-mod topic,
+   which is how sync_global_catalog.py finds it, pushes mods/<name> as its main branch, and
+   sets mods/<name> to track and push to it. Needs gh, authenticated with `gh auth login`.
 """
 from __future__ import annotations
 
@@ -54,6 +56,11 @@ def git(*args: str, cwd: Path = MOTHER_ROOT, check: bool = True) -> str:
 
 def ref_exists(ref: str) -> bool:
     return subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref],
+                          cwd=MOTHER_ROOT, capture_output=True).returncode == 0
+
+
+def is_ancestor(ancestor: str, ref: str) -> bool:
+    return subprocess.run(["git", "merge-base", "--is-ancestor", ancestor, ref],
                           cwd=MOTHER_ROOT, capture_output=True).returncode == 0
 
 
@@ -100,7 +107,8 @@ class Mod:
     def __init__(self, game: str, slug: str, start_ref: str, source_branch: str | None):
         self.game, self.slug, self.start_ref, self.source_branch = game, slug, start_ref, source_branch
         self.name = f"{game}-{slug}"
-        self.branch = f"mod-repo/{self.name}"
+        self.branch = f"mods/{self.name}"
+        self.remote = self.name
         self.worktree = WORKTREES / self.name
         self.full_name = f"{owner()}/{self.name}"
         self.url = f"https://github.com/{self.full_name}"
@@ -127,28 +135,55 @@ class Mod:
         return cls(m.group(1), m.group(2), "master-dev", None)
 
     def prepared(self) -> bool:
-        return ref_exists(self.branch) and self.marker in git("log", "--format=%s", "-20", self.branch)
+        return ref_exists(self.branch) and self.marker in git("log", "--format=%s", self.branch)
+
+    def published(self) -> bool:
+        return bool(git("config", "--get", f"branch.{self.branch}.remote", check=False))
+
+
+def run_sync(mod: Mod) -> None:
+    """Merge the local master-dev into the worktree's branch under the mod-repository rules."""
+    res = subprocess.run([sys.executable, str(SYNC_SCRIPT), "--local-source", "--mod-repo"],
+                         cwd=mod.worktree, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if res.returncode:
+        print(res.stdout[-3000:], res.stderr[-2000:], sep="\n", file=sys.stderr)
+        sys.exit(f"Merging master-dev into {mod.branch} needs a manual fix in {mod.worktree}")
+
+
+def open_worktree(mod: Mod, *add_args: str) -> None:
+    # Leftovers of an interrupted run: this script's own temporary worktree.
+    if mod.worktree.exists():
+        git("worktree", "remove", "--force", str(mod.worktree))
+    WORKTREES.mkdir(exist_ok=True)
+    git("worktree", "add", "-q", *add_args)
+
+
+def close_worktree(mod: Mod) -> None:
+    # A worktree holding a submodule (.agents/skills) can only be removed with --force;
+    # everything in it is committed by then.
+    git("worktree", "remove", "--force", str(mod.worktree))
 
 
 def prepare(mod: Mod, description: str, youtube: str, redo: bool = False) -> None:
     if redo and ref_exists(mod.branch):
-        git("branch", "-D", mod.branch)  # this script's own local branch, not published yet
+        if mod.published():
+            sys.exit(f"--redo refused: {mod.branch} is already published to {mod.url}")
+        git("branch", "-D", mod.branch)  # this script's own build, never published
     if mod.prepared():
-        print(f"[skip] {mod.branch} is already prepared")
+        if is_ancestor("master-dev", mod.branch):
+            print(f"[skip] {mod.branch} is prepared and up to date with master-dev")
+            return
+        print(f"Updating {mod.branch} with master-dev ...")
+        open_worktree(mod, str(mod.worktree), mod.branch)
+        run_sync(mod)
+        close_worktree(mod)
+        print(f"[OK] updated {mod.branch}")
         return
-    # Leftovers of an interrupted run: this script's own temporary worktree and branch.
-    if mod.worktree.exists():
-        git("worktree", "remove", "--force", str(mod.worktree))
-    WORKTREES.mkdir(exist_ok=True)
-    print(f"Preparing {mod.branch} from {mod.start_ref} in {mod.worktree} ...")
-    git("worktree", "add", "-q", "-B", mod.branch, str(mod.worktree), mod.start_ref)
 
+    print(f"Preparing {mod.branch} from {mod.start_ref} in {mod.worktree} ...")
+    open_worktree(mod, "-B", mod.branch, str(mod.worktree), mod.start_ref)
     if mod.source_branch:
-        res = subprocess.run([sys.executable, str(SYNC_SCRIPT), "--local-source", "--mod-repo"],
-                             cwd=mod.worktree, capture_output=True, text=True, encoding="utf-8", errors="replace")
-        if res.returncode:
-            print(res.stdout[-3000:], res.stderr[-2000:], sep="\n", file=sys.stderr)
-            sys.exit(f"Merging master-dev into {mod.branch} needs a manual fix in {mod.worktree}")
+        run_sync(mod)
         adjust_migrated(mod)
         body = (f"Moved from the {mod.source_branch} branch of {owner()}/jak-project, "
                 "merged with master-dev under the mod-repository rules.")
@@ -159,7 +194,7 @@ def prepare(mod: Mod, description: str, youtube: str, redo: bool = False) -> Non
     git("add", "-A", cwd=mod.worktree)
     git("commit", "-q", "-m", f"{mod.marker} (AI-assisted)", "-m", body,
         "-m", "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>", cwd=mod.worktree)
-    git("worktree", "remove", "--force", str(mod.worktree))
+    close_worktree(mod)
     print(f"[OK] prepared {mod.branch}")
 
 
@@ -217,6 +252,7 @@ def adjust_new(mod: Mod, description: str, youtube: str) -> None:
         "{TARGET_GAME}": label,
         "{GAME_BADGE}": label.replace(" ", "%20"),
         "{REPO_PATH}": mod.full_name,
+        "{REPO_NAME}": mod.name,
         "{TASK_SET_GAME}": f"task set-game-{mod.game}",
         "{GAME_DIR}": mod.game,
         "{MOD_SLUG}": mod.slug,
@@ -242,10 +278,16 @@ def publish(mod: Mod, description: str) -> None:
     subprocess.run([gh, "repo", "edit", mod.full_name, "--homepage", mod.url,
                     "--add-topic", MOD_REPO_TOPIC, "--add-topic", "opengoal", "--add-topic", mod.game],
                    check=True)
-    subprocess.run(["git", "push", f"https://github.com/{mod.full_name}.git", f"{mod.branch}:main"],
-                   cwd=MOTHER_ROOT, check=True)
-    git("branch", "-D", mod.branch)
-    print(f"[OK] published {mod.url}")
+
+    # In this clone the repository is a remote named after it, and mods/<name> tracks and
+    # pushes to its main branch: `git push` and `task modding-switch` work like on a branch.
+    if not git("remote", "get-url", mod.remote, check=False):
+        git("remote", "add", mod.remote, f"{mod.url}.git")
+    subprocess.run(["git", "push", mod.remote, f"{mod.branch}:main"], cwd=MOTHER_ROOT, check=True)
+    git("fetch", "-q", mod.remote)
+    git("branch", f"--set-upstream-to={mod.remote}/main", mod.branch)
+    git("config", f"remote.{mod.remote}.push", f"refs/heads/{mod.branch}:refs/heads/main")
+    print(f"[OK] published {mod.url} (switch to it with: task modding-switch -- {mod.name})")
 
 
 def main() -> int:
@@ -258,7 +300,7 @@ def main() -> int:
     parser.add_argument("--youtube", default="", help="demo video URL (new mod)")
     parser.add_argument("--prepare-only", action="store_true", help="build the local branches, publish nothing")
     parser.add_argument("--redo", action="store_true",
-                        help="rebuild already prepared local branches (e.g. after master-dev changed)")
+                        help="rebuild prepared branches that were never published")
     args = parser.parse_args()
 
     if git("status", "--porcelain", "--ignore-submodules=all"):

@@ -3,16 +3,18 @@
 Synchronize a mod with master-dev.
 
 Works on the checkout you run it from:
-- a mod branch of whozghiar/jak-project (merges origin/master-dev), or
-- a mod repository (merges master-dev from its `mother` remote, added on first use).
+- a mod repository checked out in whozghiar/jak-project as mods/<name> (merges origin/master-dev,
+  pushes to the mod repository's main),
+- a standalone clone of a mod repository (merges master-dev from its `mother` remote, added on
+  first use), or
+- a mod still on a branch of whozghiar/jak-project (merges origin/master-dev).
 
 By default, this script uses `git merge` (safe, non-destructive, preserves commit SHAs
 for published branches). It also offers an explicit `--rebase` option for developers
 who prefer a linear commit history on unshared/local branches.
 
 Usage:
-    python scripts/modding/sync_branch_with_master_dev.py                  # Merge origin/master-dev into the current branch
-    python scripts/modding/sync_branch_with_master_dev.py --remote mother  # In a mod repository: merge mother/master-dev
+    python scripts/modding/sync_branch_with_master_dev.py                  # Merge master-dev into the current mod
     python scripts/modding/sync_branch_with_master_dev.py --rebase         # Rebase the current branch onto master-dev
     python scripts/modding/sync_branch_with_master_dev.py --push           # Merge and push to origin
     python scripts/modding/sync_branch_with_master_dev.py --branch jak2/features/foo  # Target a specific branch
@@ -20,6 +22,7 @@ Usage:
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -96,6 +99,19 @@ def is_ancestor(ancestor_ref, target_ref):
     return res.returncode == 0
 
 
+def default_remote():
+    """origin in whozghiar/jak-project itself, mother in a standalone clone of a mod repository."""
+    url = git_quiet("remote", "get-url", "origin").stdout.strip()
+    return "origin" if re.search(r"/jak-project(\.git)?/?$", url) else "mother"
+
+
+def push_target(branch):
+    """Where `branch` publishes: its upstream remote and branch (mods/<name> pushes to <name>/main)."""
+    remote = git_quiet("config", "--get", f"branch.{branch}.remote").stdout.strip() or "origin"
+    merge = git_quiet("config", "--get", f"branch.{branch}.merge").stdout.strip() or f"refs/heads/{branch}"
+    return remote, merge.replace("refs/heads/", "", 1)
+
+
 def ensure_remote(name):
     """A mod repository reaches master-dev through a `mother` remote; add it on first use."""
     if run_cmd(f"git remote get-url {name}", check=False).returncode != 0:
@@ -121,7 +137,7 @@ def main():
     parser.add_argument(
         "--push",
         action="store_true",
-        help="Automatically push the synchronized branch to origin after success."
+        help="Push the synchronized branch to where it publishes (its upstream) after success."
     )
     parser.add_argument(
         "--source",
@@ -130,9 +146,8 @@ def main():
     )
     parser.add_argument(
         "--remote",
-        default="origin",
-        help="Remote that holds the source branch: origin for a mod branch of jak-project, "
-             "mother for a mod repository (added automatically). Default: origin."
+        help="Remote that holds the source branch. Default: origin in whozghiar/jak-project, "
+             "mother (added automatically) in a standalone clone of a mod repository."
     )
     parser.add_argument(
         "--local-source",
@@ -143,12 +158,10 @@ def main():
         "--mod-repo",
         action="store_true",
         help="Apply the mod repository rules (only release.yml, lint.yml and build.yml are kept). "
-             "Implied when --remote is not origin."
+             "Implied for mods/<name> branches and when the remote is not origin."
     )
     args = parser.parse_args()
-    mod_repo = args.mod_repo or args.remote != "origin"
-    allowed_workflows = (sync_common.ALLOWED_MOD_REPO_WORKFLOWS if mod_repo
-                         else sync_common.ALLOWED_MOD_BRANCH_WORKFLOWS)
+    remote = args.remote or default_remote()
 
     # Determine target branch
     target_branch = args.branch.strip() if args.branch else get_current_branch()
@@ -156,8 +169,12 @@ def main():
         print("Error: Could not determine current branch. Please specify with --branch <name>.", file=sys.stderr)
         sys.exit(1)
 
+    mod_repo = args.mod_repo or remote != "origin" or target_branch.startswith("mods/")
+    allowed_workflows = (sync_common.ALLOWED_MOD_REPO_WORKFLOWS if mod_repo
+                         else sync_common.ALLOWED_MOD_BRANCH_WORKFLOWS)
+
     source_branch = args.source.strip()
-    source_ref = source_branch if args.local_source else f"{args.remote}/{source_branch}"
+    source_ref = source_branch if args.local_source else f"{remote}/{source_branch}"
 
     if target_branch == source_branch:
         print(f"Error: Target branch cannot be the source base branch '{source_branch}'.", file=sys.stderr)
@@ -179,9 +196,9 @@ def main():
 
     # Fetch source
     if not args.local_source:
-        ensure_remote(args.remote)
+        ensure_remote(remote)
         print(f"\nFetching latest {source_ref}...")
-        run_cmd(f"git fetch {args.remote} {source_branch}")
+        run_cmd(f"git fetch {remote} {source_branch}")
 
     # Switch to target branch if not already on it
     current_branch = get_current_branch()
@@ -207,9 +224,10 @@ def main():
             sys.exit(rebase_res.returncode)
         print(f"\n[OK] Successfully rebased {target_branch} onto {source_ref}!")
         if args.push:
-            print(f"\nPushing (force-with-lease) {target_branch} to origin...")
-            run_cmd(f"git push --force-with-lease origin {target_branch}")
-            print(f"[OK] Pushed to origin/{target_branch} successfully.")
+            push_remote, push_branch = push_target(target_branch)
+            print(f"\nPushing (force-with-lease) {target_branch} to {push_remote}/{push_branch}...")
+            run_cmd(f"git push --force-with-lease {push_remote} {target_branch}:{push_branch}")
+            print(f"[OK] Pushed to {push_remote}/{push_branch} successfully.")
     else:
         print(f"\nMerging {source_ref} into {target_branch}...")
         # Ensure 'ours' merge driver is enabled for .gitattributes protection
@@ -274,9 +292,10 @@ def main():
         run_cmd(f'git commit -m "chore(sync): merge {source_ref} into {target_branch} (AI-assisted)"')
         print(f"\n[OK] Successfully merged {source_ref} into {target_branch}!")
         if args.push:
-            print(f"\nPushing {target_branch} to origin...")
-            run_cmd(f"git push origin {target_branch}")
-            print(f"[OK] Pushed to origin/{target_branch} successfully.")
+            push_remote, push_branch = push_target(target_branch)
+            print(f"\nPushing {target_branch} to {push_remote}/{push_branch}...")
+            run_cmd(f"git push {push_remote} {target_branch}:{push_branch}")
+            print(f"[OK] Pushed to {push_remote}/{push_branch} successfully.")
 
     print("\nSynchronization completed successfully!")
 

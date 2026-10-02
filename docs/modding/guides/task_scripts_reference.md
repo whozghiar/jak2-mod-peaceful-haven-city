@@ -360,9 +360,9 @@ These tasks wrap specialized Python automation scripts located in `scripts/moddi
 ### 1. `task modding-new-mod -- (--new <game>/<slug> | --from-branch <branch>...) [options]`
 - **Script:** [`create_mod_repo.py`](../../../scripts/modding/create_mod_repo.py)
 - **When?** Starting a new mod, or moving a mod that still lives on a branch of this repository into its own repository.
-- **Why?** Every mod lives in its own GitHub repository, `<owner>/<game>-<slug>`, where the slug is the mod's launcher catalog key kept verbatim. The script works in two steps, each skipped when already done, so a failed run can simply be re-run:
-  1. **Prepare (local):** builds the branch `mod-repo/<name>` in a temporary worktree next to this repository: the mod merged with the local `master-dev` under the mod-repository rules, plus one commit with the repository-specific changes (README from the template or a "moved from" note, catalog name and `websiteUrl`).
-  2. **Publish:** creates the public repository with the `opengoal-mod` topic (how the global catalog finds it) and pushes the prepared branch as its `main`. Needs `gh`, authenticated with `gh auth login`.
+- **Why?** Every mod lives in its own GitHub repository, `<owner>/<game>-<slug>`, where the slug is the mod's launcher catalog key kept verbatim. In this clone that repository is the remote `<name>` and the local branch `mods/<name>` (see `task modding-switch`). Nothing is deleted: the source branch and `mods/<name>` both stay. Two steps, so a failed run can simply be re-run:
+  1. **Prepare (local):** builds `mods/<name>` in a temporary worktree next to this repository: the mod merged with the local `master-dev` under the mod-repository rules, plus one commit with the repository-specific changes (README from the template or a "moved from" note, catalog name and `websiteUrl`). Re-running it merges newer `master-dev` commits into a prepared branch.
+  2. **Publish:** creates the public repository with the `opengoal-mod` topic (how the global catalog finds it), pushes `mods/<name>` as its `main`, and sets `mods/<name>` to track and push to it. Needs `gh`, authenticated with `gh auth login`.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
@@ -371,7 +371,7 @@ These tasks wrap specialized Python automation scripts located in `scripts/moddi
   | `--description "<text>"` | String *(optional)* | One-line description (README overview of a new mod, and the repository description). |
   | `--youtube <url>` | String *(optional)* | Demo video URL embedded in a new mod's README. |
   | `--prepare-only` | Flag *(optional)* | Build the local branches and publish nothing. |
-  | `--redo` | Flag *(optional)* | Rebuild branches already prepared but not published (e.g. after `master-dev` changed). |
+  | `--redo` | Flag *(optional)* | Rebuild prepared branches that were never published. |
 
 *Example:*
 ```bash
@@ -380,29 +380,46 @@ task modding-new-mod -- --new jak2/traffic-overhaul --description "Denser, smart
 
 ---
 
-### 2. `task modding-sync-branch -- [options]`
-- **Script:** [`sync_branch_with_master_dev.py`](../../../scripts/modding/sync_branch_with_master_dev.py)
-- **When?** Whenever your mod needs the latest modding base.
-- **Why?** Merges `master-dev` into the current mod while preserving its root `README.md` and `index.json`, taking the shared agent configuration and docs from `master-dev`, and dropping the workflows and files that only belong to the mother repository.
+### 2. `task modding-switch -- <target>`
+- **Script:** [`switch_mod.py`](../../../scripts/modding/switch_mod.py)
+- **When?** Moving this working directory to another mod, back to `master-dev`, or to a mod still on a branch.
+- **Why?** Mod repositories share their history with this repository, so one clone holds them all and the extracted game data and build cache stay shared. A mod repository `<name>` becomes the remote `<name>` and the local branch `mods/<name>`, created and fetched on first use. The task also parks the knowledge-base submodule before switching to a mod still on a branch (those carry a plain copy of the skills at `.agents/skills`), then refreshes the knowledge base and the skill links. Those branches predate the task: to leave one, run `git switch master-dev`, then `task kb-update`.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
-  | `--remote <name>` | String (`origin`) | Remote holding `master-dev`. In a mod repository use `mother` (added automatically on first use); this also applies the mod-repository rules. |
-  | `--branch <name>` | String (`current branch`) | Target branch to synchronize. |
-  | `--rebase` | Flag *(optional)* | Uses `git rebase` instead of `git merge` (rewrites local commit history; use only on unpushed local commits). |
-  | `--push` | Flag *(optional)* | Pushes the synchronized branch to `origin` if the merge succeeds cleanly. |
-  | `--source <branch>` | String (`master-dev`) | Source branch to merge from. |
-  | `--local-source` | Flag *(optional)* | Merge the local source branch without fetching (used by `create_mod_repo.py`). |
-  | `--mod-repo` | Flag *(optional)* | Apply the mod-repository rules without a `mother` remote. |
+  | `<target>` | Positional | A mod repository name (`jak2-blue-krimzon-guard`), `master-dev`, or a branch name. |
+  | `--list` | Flag *(optional)* | List the mod repositories (here and on GitHub) and the mods still on a branch. |
 
-*Example (in a mod repository):*
+*Example:*
 ```bash
-task modding-sync-branch -- --remote mother --push
+task modding-switch -- jak2-blue-krimzon-guard
 ```
 
 ---
 
-### 3. `task kb-update` and `task ai-link`
+### 3. `task modding-sync-branch -- [options]`
+- **Script:** [`sync_branch_with_master_dev.py`](../../../scripts/modding/sync_branch_with_master_dev.py)
+- **When?** Whenever your mod needs the latest modding base. On `mods/<name>` it pushes to the mod repository's `main`; on a mod still on a branch, to that branch.
+- **Why?** Merges `master-dev` into the current mod while preserving its root `README.md` and `index.json`, taking the shared agent configuration and docs from `master-dev`, and dropping the workflows and files that only belong to the mother repository.
+- **CLI Parameters (`-- <args>`):**
+  | Parameter | Type / Default | Description |
+  | :--- | :--- | :--- |
+  | `--remote <name>` | String (`origin` here, `mother` in a standalone mod clone) | Remote holding `master-dev`; `mother` is added automatically on first use. |
+  | `--branch <name>` | String (`current branch`) | Target branch to synchronize. |
+  | `--rebase` | Flag *(optional)* | Uses `git rebase` instead of `git merge` (rewrites local commit history; use only on unpushed local commits). |
+  | `--push` | Flag *(optional)* | Pushes the synchronized branch to its upstream (`mods/<name>` to the mod repository's `main`) if the merge succeeds cleanly. |
+  | `--source <branch>` | String (`master-dev`) | Source branch to merge from. |
+  | `--local-source` | Flag *(optional)* | Merge the local source branch without fetching (used by `create_mod_repo.py`). |
+  | `--mod-repo` | Flag *(optional)* | Apply the mod-repository rules; automatic on `mods/*` branches and with the `mother` remote. |
+
+*Example (on `mods/<name>`):*
+```bash
+task modding-sync-branch -- --push
+```
+
+---
+
+### 4. `task kb-update` and `task ai-link`
 - **Scripts:** [`kb_sync.py`](../../../scripts/ai/kb_sync.py), [`link_skills.py`](../../../scripts/ai/link_skills.py)
 - **When?** Rarely by hand: the Claude Code SessionStart hook runs both at the start of every session.
 - **Why?** `.agents/skills/` is the knowledge-base submodule ([`opengoal-modding-kb`](https://github.com/whozghiar/opengoal-modding-kb)). `kb-update` initialises it, puts it on `main` and fast-forwards it, without ever discarding local commits or edits. `ai-link` then links each skill into `.claude/skills/`, the only folder Claude Code reads. To record a discovery in the knowledge base, follow the `kb` skill.
@@ -414,7 +431,7 @@ task kb-update
 
 ---
 
-### 4. `task modding-sync-catalog -- [options]`
+### 5. `task modding-sync-catalog -- [options]`
 - **Script:** [`sync_global_catalog.py`](../../../scripts/modding/sync_global_catalog.py)
 - **When?** On `master-dev` to refresh and rebuild the unified root `index.json` catalog containing all published mods and versions.
 - **Why?** Queries the GitHub Releases of this repository and of every mod repository (same owner, `opengoal-mod` topic), parses the catalog attached to each release, dedupes versions, takes each mod repository's own `index.json` as the source of its name, description and website, and writes the consolidated Launcher v1 schema file.
@@ -434,13 +451,13 @@ task modding-sync-catalog -- --offline
 
 ---
 
-### 5. Per-Mod Catalog Tool: `update_mod_catalog.py`
+### 6. Per-Mod Catalog Tool: `update_mod_catalog.py`
 - **When?** During release creation (`release.yml` calls it).
 - **Why?** Generates and maintains an individual mod's `index.json` catalog.
 
 ---
 
-### 6. `task modding-package-texture-pack` (Alias: `task modding-register-texture-pack`) `-- [options]`
+### 7. `task modding-package-texture-pack` (Alias: `task modding-register-texture-pack`) `-- [options]`
 - **Script:** [`package_texture_pack.py`](../../../scripts/modding/package_texture_pack.py)
 - **When?** When registering a standalone texture pack into `index.json` after exporting it via the OpenGOAL Texture Pack Generator GUI (or when creating one via CLI with `--from-source`).
 - **Why?** Recovers launcher-compliant `.zip` archives from `docs/modding/current_mod/texture_packs/` (generated by the GUI tool), inspects their internal `metadata.json`, computes SHA256 checksums, and automatically registers or updates the texture pack in `index.json` under `"texturePacks"`. Also supports building directly from raw PNG textures in `custom_assets/<game>/texture_replacements/` when run with `--from-source`.
@@ -495,6 +512,6 @@ task modding-package-texture-pack -- --from-source --game jak2 --slug blue-kg-te
 5. When publishing, upload the `.zip` archive as a GitHub Release asset (or trigger `release.yml` which automatically packages it).
 
 ### Scenario D: Bringing the Latest Modding Base into a Mod
-1. In the mod repository: `task modding-sync-branch -- --remote mother` (a mod still on a branch here: `task modding-sync-branch`).
+1. Switch to the mod (`task modding-switch -- <name>`), then run `task modding-sync-branch -- --push`.
 2. If conflicts occur, inspect the reported files or run the recommended resolution command.
 3. Test with cold boot: `task boot-game-retail`.

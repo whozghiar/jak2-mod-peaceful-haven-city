@@ -2,7 +2,8 @@
 
 What each workflow in `.github/workflows/` does, when it runs and who may run it. It covers
 `whozghiar/jak-project` (the mother repository) and the mod repositories created from its
-`master-dev`, which inherit the same files.
+`master-dev`, which inherit the same files. The day-to-day workflow around them is in
+[`repository_workflow.md`](repository_workflow.md).
 
 ## Contents
 
@@ -32,7 +33,7 @@ What each workflow in `.github/workflows/` does, when it runs and who may run it
 [whozghiar/jak-project] master-dev    modding base: engine patches, tooling, Mods menu
         |
         +--> mod repositories, whozghiar/<game>-<slug>  (task modding-new-mod)
-        |       on demand: task modding-sync-branch -- --remote mother
+        |       on demand: task modding-sync-branch -- --push
         |       on push: lint.yml; by hand: build.yml, release.yml
         |
         +--> mods not moved yet, branches jak[1-3]/<type>/<slug> of this repository
@@ -97,7 +98,7 @@ For the mods that still live on a branch of this repository.
   history with nobody reviewing it.
 - Refuses to run on `master` or `master-dev`.
 
-A mod repository syncs locally instead: `task modding-sync-branch -- --remote mother`.
+A mod repository syncs locally instead: `task modding-sync-branch -- --push` on `mods/<name>`.
 
 ## 5. Mod branch health check (`branch-sync-check.yaml`)
 

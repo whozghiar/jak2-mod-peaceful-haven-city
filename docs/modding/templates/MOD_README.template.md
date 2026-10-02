@@ -48,12 +48,16 @@
 
 If you want to modify or compile this mod locally from source:
 
-### 0. Clone
-The knowledge base used by AI agents is a submodule, so clone with it:
+### 0. Get the Source
+Already working in a clone of [`whozghiar/jak-project`](https://github.com/whozghiar/jak-project)? Switch to this mod there, keeping your extracted game data:
+```bash
+task modding-switch -- {REPO_NAME}
+```
+Otherwise clone it on its own; the knowledge base used by AI agents is a submodule, so clone with it:
 ```bash
 git clone --recurse-submodules https://github.com/{REPO_PATH}.git
 ```
-To pull the latest modding base into this mod later, run `task modding-sync-branch -- --remote mother`.
+To pull the latest modding base into this mod later, run `task modding-sync-branch`.
 
 ### 1. Select the Active Game
 Make sure your environment is targeting {TARGET_GAME}:

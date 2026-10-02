@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "sourceName": "Peaceful Haven City Source",
-  "lastUpdated": "2026-10-02T01:41:15Z",
+  "lastUpdated": "2026-10-02T12:14:20Z",
   "mods": {
     "peaceful-haven-city": {
       "displayName": "Peaceful Haven City",
@@ -34,8 +34,8 @@
           }
         }
       ],
-      "coverArtUrl": "https://raw.githubusercontent.com/whozghiar/jak-project/mod-repo/jak2-peaceful-haven-city/docs/img/mod/mod_cover.png",
-      "thumbnailArtUrl": "https://raw.githubusercontent.com/whozghiar/jak-project/mod-repo/jak2-peaceful-haven-city/docs/img/mod/mod_cover.png"
+      "coverArtUrl": "https://raw.githubusercontent.com/whozghiar/jak-project/mods/jak2-peaceful-haven-city/docs/img/mod/mod_cover.png",
+      "thumbnailArtUrl": "https://raw.githubusercontent.com/whozghiar/jak-project/mods/jak2-peaceful-haven-city/docs/img/mod/mod_cover.png"
     }
   },
   "texturePacks": {

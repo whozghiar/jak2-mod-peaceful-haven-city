@@ -64,7 +64,7 @@ For the Launcher to hit zero extraction or local-compile errors, the ZIP archive
 
 ## 3. Triggering a Release from a Mod Repository
 
-The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod repository inherits it and gets its updates with `task modding-sync-branch -- --remote mother`. In a mod repository the mod's catalog key and game come from its own `index.json`, so the release tag is `<slug>-vX.Y.Z` and the launcher keeps seeing the same mod.
+The `.github/workflows/release.yml` workflow lives on `master-dev`, so every mod repository inherits it and gets its updates with `task modding-sync-branch -- --push`. In a mod repository the mod's catalog key and game come from its own `index.json`, so the release tag is `<slug>-vX.Y.Z` and the launcher keeps seeing the same mod.
 
 > [!IMPORTANT]
 > **`workflow_dispatch` only — no tag trigger.** This workflow does not listen for tag
