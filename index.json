@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceName": "Peaceful Haven City Source",
-  "lastUpdated": "2026-10-02T21:46:27Z",
+  "sourceName": "Haven City Peaceful Source",
+  "lastUpdated": "2026-10-02T22:53:18Z",
   "mods": {
     "peaceful-haven-city": {
-      "displayName": "Peaceful Haven City",
-      "description": "Adds a blue-recolored Crimson Guard as its own, standalone entity — a new GOAL type (`crimson-blue-guard`) that reuses 100% of the stock `crimson-guard`'s behavior, animations and sounds, only with a re-textured mesh. It appears in Haven City mixed into the normal ambient guard traffic, alongside the regular red guards.",
+      "displayName": "Haven City Peaceful",
+      "description": "Adds a blue-recolored Crimson Guard as its own, standalone entity — a new GOAL type (`crimson-blue-guard`) that reuses 100% of the stock `crimson-guard`'s behavior, animations and sounds, only with a re-textured mesh. It appears in Haven City mixed into the normal ambient guard traffic,",
       "authors": [
         "whozghiar"
       ],
@@ -20,17 +20,17 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishedDate": "2026-09-17T21:58:03Z",
+          "publishedDate": "2026-10-02T22:53:18Z",
           "supportedGames": [
             "jak2"
           ],
           "assets": {
-            "windows": "https://github.com/whozghiar/jak-project/releases/download/peaceful-haven-city-v1.0.0/windows-peaceful-haven-city-v1.0.0.zip",
-            "linux": "https://github.com/whozghiar/jak-project/releases/download/peaceful-haven-city-v1.0.0/linux-peaceful-haven-city-v1.0.0.zip"
+            "windows": "https://github.com/whozghiar/jak2-mod-peaceful-haven-city/releases/download/peaceful-haven-city-v1.0.0/windows-peaceful-haven-city-v1.0.0.zip",
+            "linux": "https://github.com/whozghiar/jak2-mod-peaceful-haven-city/releases/download/peaceful-haven-city-v1.0.0/linux-peaceful-haven-city-v1.0.0.zip"
           },
           "checksums": {
-            "windows": "44cbdde139c18974464b782e88dab400853d1b44ba1a0b1d0523686090a24348",
-            "linux": "61d7cb5c78b9e01e81db0de95442ed5de66c880b5a326e8aaf07fca12c050612"
+            "windows": "07c708921ebfd2b142a870d8deeeb12532e59b3d72ec4925ea12f846bf899968",
+            "linux": "c873766af6c1b9235f951a0680804284b2f79e8132a486b47cb141bd8095707c"
           }
         }
       ],
@@ -60,7 +60,7 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishedDate": "2026-10-02T21:46:22Z",
+          "publishedDate": "2026-10-02T22:53:18Z",
           "supportedGames": [
             "jak2"
           ],
@@ -68,11 +68,6 @@
             "windows": "https://github.com/whozghiar/jak2-mod-peaceful-haven-city/releases/download/peaceful-haven-city-v1.0.0/blue-kg-vehicles-textures-v1.0.0.zip",
             "linux": "https://github.com/whozghiar/jak2-mod-peaceful-haven-city/releases/download/peaceful-haven-city-v1.0.0/blue-kg-vehicles-textures-v1.0.0.zip",
             "jak2": "https://github.com/whozghiar/jak2-mod-peaceful-haven-city/releases/download/peaceful-haven-city-v1.0.0/blue-kg-vehicles-textures-v1.0.0.zip"
-          },
-          "checksums": {
-            "windows": "11f0e0fe2004b2737a8f7978c367c3699aa264249c4445872d655c12c94592d3",
-            "linux": "11f0e0fe2004b2737a8f7978c367c3699aa264249c4445872d655c12c94592d3",
-            "jak2": "11f0e0fe2004b2737a8f7978c367c3699aa264249c4445872d655c12c94592d3"
           }
         }
       ]
