@@ -1,0 +1,23 @@
+#!/bin/sh
+# Installed by task git-hooks (scripts/git-hooks/install.py) from scripts/git-hooks/pre-push.
+#
+# pre-push: a mods/<name> branch is the main branch of the mod repository <name>, so it may be
+# pushed there only. A plain `git push` (or VS Code's Push) already goes there; this stops a typed
+# `git push origin` from creating a mods/<name> branch in the mother repository.
+url="$2"
+# The repository the push goes to: the last part of its URL, without ".git".
+repo=$(printf '%s\n' "$url" | sed -e 's#/*$##' -e 's#\.git$##' -e 's#.*[/:]##')
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$local_ref" in
+    refs/heads/mods/*)
+      name=${local_ref#refs/heads/mods/}
+      if [ "$repo" != "$name" ]; then
+        echo "pre-push: refused: mods/$name belongs to the repository $name, not to $url." >&2
+        echo "pre-push: push it with a plain 'git push' (or VS Code's Push), which goes there." >&2
+        status=1
+      fi
+      ;;
+  esac
+done
+exit $status

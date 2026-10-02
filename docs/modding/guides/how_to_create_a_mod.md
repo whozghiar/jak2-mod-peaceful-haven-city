@@ -74,6 +74,9 @@ works without editing any script or workflow.
    task extract
    ```
    `iso_data/`, `decompiler_out/` and `out/` are shared by every mod you switch to in this clone.
+5. **Install the git hooks:** `task git-hooks`. Its pre-push hook refuses to push a
+   `mods/<name>` branch anywhere but its own repository, so a typed `git push origin` cannot
+   create a mod branch in the mother repository.
 
 ## 1. Create the mod repository
 
@@ -182,8 +185,8 @@ to.
 
 | File | For | Content |
 | :--- | :--- | :--- |
-| `README.md` at the root | Players | Overview, features, controls, demo video, and the "Modding Changes Log". |
-| `docs/modding/current_mod/<slug>_readme.md` | Developers and agents | Architecture, the hooks you placed and why, memory and performance notes. Link to the Lisp wiki instead of pasting GOAL code. |
+| `README.md` at the root | Players | Overview, features, controls, demo video. No change log, no checklist. |
+| `docs/modding/current_mod/<slug>_readme.md` | Developers and agents | Architecture, the hooks you placed and why, memory and performance notes, and the change log. Link to the Lisp wiki instead of pasting GOAL code. |
 | `docs/img/mod/mod_cover.png` | The launcher | Optional cover thumbnail. |
 
 ## 7. Record what you learned in the knowledge base
@@ -225,8 +228,16 @@ Every repository picks the change up at its next Claude Code session, or with
 
 ## 9. Release
 
-1. **Check:** the compliance checklist at the end of the mod's README (toggle off by default,
-   retail Mods menu, prefixed symbols, comments), then a cold `task boot-game-retail`.
+1. **Check** before releasing:
+   - native non-regression: with the mod compiled but its toggle off, the game plays as stock;
+   - in-game Mods toggle: at least one entry in the Mods menu under the mod's slug (Jak 2 and
+     Jak 3, L3 + SELECT, in a retail boot), or a slug-prefixed debug submenu (Jak 1);
+   - no edit to `default-menu*.gc`, and every symbol prefixed with the mod's slug;
+   - the GOAL patterns the mod relies on are in the Lisp wiki (recorded with the `kb` skill);
+   - comments on every new or overridden type, method, state and macro;
+   - optional: a cover at `docs/img/mod/mod_cover.png`.
+
+   Then a cold `task boot-game-retail`.
 2. **Make it public** if you created it private:
    ```bash
    gh repo edit <owner>/jak2-mod-my-mod --visibility public --accept-visibility-change-consequences
@@ -265,8 +276,9 @@ Every repository picks the change up at its next Claude Code session, or with
    compiles. It may also rebuild the C++ (`task build-release-game`) or the decompiler.
 4. **You run the cold boot** it gives you (`task boot-game`, or `task boot-game-retail` for the
    Mods menu) and tell it what you see. A change is done only after that.
-5. **The agent documents** the change in the README's "Modding Changes Log" and in
-   `docs/modding/current_mod/<slug>_readme.md`.
+5. **The agent documents** the change in `docs/modding/current_mod/<slug>_readme.md`, its
+   change log included; the README changes only when players need to know (a feature, a
+   control).
 6. **Knowledge:** ask it to record what was verified and reusable with the `kb` skill; it
    commits and pushes from `.agents/skills`.
 7. **Commit and push** the mod. Commit messages written with an agent end with `(AI-assisted)`.

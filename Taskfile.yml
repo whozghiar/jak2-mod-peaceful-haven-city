@@ -174,6 +174,10 @@ tasks:
     desc: "Switch this working directory to a mod repository (mods/<name>, fetched on first use), master-dev or a mod branch (scripts/modding/switch_mod.py). e.g. -- jak2-mod-blue-krimzon-guard, or -- --list"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/switch_mod.py {{.CLI_ARGS}}"
+  git-hooks:
+    desc: "Install the repository's git hooks (scripts/git-hooks): pre-push refuses to push a mods/<name> branch anywhere but its own repository"
+    cmds:
+      - "{{.PYTHON}} ./scripts/git-hooks/install.py"
   modding-sync-branch:
     desc: "Merge master-dev into the current mod (scripts/modding/sync_branch_with_master_dev.py): a mod branch here, or a mod repository with -- --remote mother. --rebase / --push accepted after --"
     cmds:

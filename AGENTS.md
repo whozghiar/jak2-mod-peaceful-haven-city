@@ -57,8 +57,9 @@ only when its description matches the task.
 5. **Non-destructive changes.** Never delete or wipe original `.gc` files; prefer surgical
    overrides and modular extensions. Never reformat a whole upstream `.gc` file: it trips the
    `og:preserve-this` lint and buries the real diff.
-6. **Traceability.** Log every change in the mod's root `README.md` ("Modding Changes Log"); put
-   deeper technical notes in `docs/modding/current_mod/<slug>_readme.md`.
+6. **Traceability.** Log every change in the "Change log" section of
+   `docs/modding/current_mod/<slug>_readme.md`, next to the technical notes. The root `README.md`
+   is for players: no change log, no checklist.
 
 ## 5. Recording verified discoveries
 

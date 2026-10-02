@@ -52,6 +52,16 @@ knowledge-base work) and refreshes the knowledge base and the skill links after 
 branches predate the task: to leave one, run `git switch master-dev` (or
 `git switch mods/<name>`), then `task kb-update`.
 
+#### From the IDE
+
+In VS Code, and in editors built on it, select the branch name in the status bar (or run
+**Git: Checkout to** from the Command Palette) and pick `mods/<name>`, for example
+`mods/jak2-mod-peaceful-haven-city`, or `master-dev`. Between those branches this does the same
+as the task, except two things: it does not fetch a mod repository that is not in the clone yet
+(run `task modding-switch -- <name>` once for it), and it leaves the knowledge base as it was
+(run `task kb-update`, or let the next Claude Code session do it). Uncommitted changes follow
+you, or VS Code offers to stash them: commit before switching mods.
+
 ### What a switch changes
 
 A switch replaces the tracked files (game code, engine, scripts, `Taskfile.yml`, docs, agent
@@ -72,12 +82,31 @@ previous mod's until you rebuild what differs:
 
 | Limit | Why | What to do |
 | :--- | :--- | :--- |
-| One mod at a time | A working directory has one checkout and one `out/`. | For two mods side by side, add a second working directory: `git worktree add ../jak-project-2 mods/<name>`. It starts without `iso_data/`, `decompiler_out/` and `out/`: copy `iso_data/<game>/` into it, then `task extract` and a full build. A branch can be checked out in only one of them. |
+| One mod at a time | A working directory has one checkout and one `out/`. | For two mods side by side, add a second working directory (see [Two mods side by side](#two-mods-side-by-side)). |
 | A clean tree to switch | The task refuses to switch over uncommitted changes or untracked files, so nothing is carried into the wrong mod. | Commit, or `git stash -u` and `git stash pop` when you come back. |
 | Extracted data lags behind | Textures and decompiler output stay as the last `task extract` made them. | Run `task extract` after switching to or from a mod that changes them; it takes minutes, not a full rebuild. |
 | Saves and settings are shared | `%APPDATA%/OpenGOAL/<game>/` holds the saves (a cold boot loads slot 1) and `pc-settings.gc` for every mod and for the stock game. | Before testing a mod, think about what the previous one saved: start a new game, or move the save files aside. |
 | One agent memory for every mod | Claude Code keeps its auto memory per folder, so every mod of the working directory shares it. | Keep a mod's notes in its `docs/modding/current_mod/`, and verified general facts in the knowledge base. |
 | The knowledge base moves on its own | Each repository pins a knowledge-base commit, and the session hook fast-forwards `.agents/skills` to the latest, so `git status` can show `.agents/skills` as modified. | Commit it with your next change, or leave it: the next sync with `master-dev` brings the base's pointer. |
+
+### Two mods side by side
+
+Switching is enough for one mod at a time. To keep a second mod open in its own window, give it
+a second working directory, a git worktree, outside this folder:
+
+1. In VS Code: **Source Control**, **Source Control Repositories** view, the repository's
+   **More Actions (...)** menu, **Worktrees**, **Create Worktree**. Pick `mods/<name>` and a
+   folder next to this one, such as `..\jak-project-<name>`. From a terminal:
+   `git worktree add ../jak-project-<name> mods/<name>`.
+2. Open it with **Open Worktree in New Window** (right-click it in Source Control Repositories),
+   or `code ../jak-project-<name>`.
+3. In the new folder: `task kb-update` for the knowledge base, copy your game files into its
+   `iso_data/<game>/`, then `task set-game-<game>`, `task gen-cmake-release`,
+   `task build-release` and `task extract`: `iso_data/`, `decompiler_out/` and `out/` are per
+   folder.
+
+A branch can be checked out in only one working directory, and each folder has its own Claude
+Code memory. Remove one with `git worktree remove ../jak-project-<name>` (the branch stays).
 
 ## 3. Everyday tasks
 
@@ -98,7 +127,14 @@ local branch `mods/<game>-mod-<name>`. The whole procedure, through to the relea
 
 On `mods/<name>`: edit, verify with `task compile-check`, ask for a cold boot
 (`task boot-game-retail` checks the Mods menu), commit, then `git push`. The golden rules are in
-[`AGENTS.md`](../../../AGENTS.md): runtime toggle, native non-regression, comments, change log.
+[`AGENTS.md`](../../../AGENTS.md): runtime toggle, native non-regression, comments, change log
+(in the mod's technical README, not in its player README).
+
+`git push` on `mods/<name>` goes to that repository's `main`: the branch tracks `<name>/main`,
+and the remote `<name>` carries the push rule `refs/heads/mods/<name>:refs/heads/main`. VS
+Code's Push and Sync buttons follow the same tracking. Only a typed `git push origin` would go
+elsewhere, creating a `mods/<name>` branch in the mother repository: the pre-push hook that
+`task git-hooks` installs refuses it.
 
 ### Bring the latest modding base into the current mod
 

@@ -513,6 +513,18 @@ task modding-package-texture-pack -- --from-source --game jak2 --slug blue-kg-te
 
 ---
 
+### 9. `task git-hooks`
+- **Script:** [`install.py`](../../../scripts/git-hooks/install.py)
+- **When?** Once per clone, and again after `scripts/git-hooks/` changes.
+- **Why?** Copies the hooks of [`scripts/git-hooks/`](../../../scripts/git-hooks/) into the clone's hooks folder, which its worktrees share. `pre-push` refuses to push a `mods/<name>` branch anywhere but the repository `<name>`: a plain `git push` already goes there, and a typed `git push origin` would otherwise create a `mods/<name>` branch in the mother repository. A hook it did not install is left alone.
+
+*Example:*
+```bash
+task git-hooks
+```
+
+---
+
 ## 11. Common Developer Workflows
 
 ### Scenario A: Fast LISP Gameplay Modding

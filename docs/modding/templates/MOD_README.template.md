@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/AI--assisted-Modding-purple.svg" alt="AI Assisted">
 </p>
 
-> **Contents:** [Overview](#overview) · [Key Features](#key-features) · [Download & Play](#download--play-via-opengoal-launcher-players) · [Developer Setup](#developer-setup--local-compilation) · [Demo Video](#demonstration-video) · [Compliance Checklist](#compliance-checklist) · [Technical Documentation](#technical-documentation)
+> **Contents:** [Overview](#overview) · [Key Features](#key-features) · [Download & Play](#download--play-via-opengoal-launcher-players) · [Developer Setup](#developer-setup--local-compilation) · [Demo Video](#demonstration-video) · [Technical Documentation](#technical-documentation)
 
 ---
 
@@ -99,17 +99,8 @@ task boot-game
 > [!NOTE]
 > *Demonstration videos must be hosted externally on YouTube to prevent repository bloating. Replace `{YOUTUBE_ID}` with your YouTube video ID (e.g. `MnqnybexhSA` from `https://youtu.be/MnqnybexhSA`).*
 
-## Compliance Checklist
-- [ ] **Native non-regression:** with the mod compiled but its toggle OFF, the game plays identically to stock.
-- [ ] **In-game Mods toggle:** the mod registers at least one enable/disable entry in the Mods menu under the slug `{MOD_SLUG}` (Jak 2 / Jak 3, opens with **L3 + SELECT**, works in a retail boot; the call is in the [Lisp wiki](.agents/skills/goal-lisp/wiki/common.md#1211-register-an-in-game-mods-toggle)) or a `{MOD_SLUG}`-prefixed **debug-only** submenu (Jak 1). See [`docs/modding/guides/mods_menu.md`](docs/modding/guides/mods_menu.md).
-- [ ] **No direct `default-menu*.gc` edits.**
-- [ ] **Symbols prefixed** with the mod slug (`*mod-{MOD_SLUG}-*`, `mod-{MOD_SLUG}-*`).
-- [ ] **Verified Lisp instructions** used by this mod are present in the Lisp wiki (`.agents/skills/goal-lisp/wiki/`), recorded with the `kb` skill.
-- [ ] **In-code comments** on every new/overridden type, method, state, macro.
-- [ ] **Mod cover thumbnail:** Optional cover image deposited at `docs/img/mod/mod_cover.png` for OpenGOAL Launcher display.
-
 ## Technical Documentation
-For the complete technical breakdown, architecture, and developer notes, refer to:
+For the complete technical breakdown, architecture, developer notes and change log, refer to:
 - [`docs/modding/current_mod/{MOD_SLUG}_readme.md`](docs/modding/current_mod/{MOD_SLUG}_readme.md)
 
 ---
