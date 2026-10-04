@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
   "sourceName": "Haven City Peaceful Source",
-  "lastUpdated": "2026-10-02T22:53:18Z",
+  "lastUpdated": "2026-10-04T17:51:39Z",
   "mods": {
     "peaceful-haven-city": {
       "displayName": "Haven City Peaceful",
-      "description": "Adds a blue-recolored Crimson Guard as its own, standalone entity — a new GOAL type (`crimson-blue-guard`) that reuses 100% of the stock `crimson-guard`'s behavior, animations and sounds, only with a re-textured mesh. It appears in Haven City mixed into the normal ambient guard traffic,",
+      "description": "Adds a blue-recolored Crimson Guard as its own, standalone entity — a new GOAL type (`crimson-blue-guard`) that reuses 100% of the stock `crimson-guard`'s behavior, animations and sounds, only with a re-textured mesh. It appears in Haven City mixed into the normal ambient guard traffic, alongside the regular red guards.",
       "authors": [
         "whozghiar"
       ],

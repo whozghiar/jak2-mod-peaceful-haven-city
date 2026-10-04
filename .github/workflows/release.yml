@@ -290,7 +290,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
-      actions: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -409,23 +408,3 @@ jobs:
           else
             echo "index.json already up to date on the branch."
           fi
-
-      - name: Trigger Downstream Syncs on master-dev
-        # Creating the release and pushing index.json above both happen with
-        # the default GITHUB_TOKEN - GitHub does not let GITHUB_TOKEN-authored
-        # actions trigger other workflows' event listeners (it would recurse
-        # otherwise), so sync-global-catalog.yml's own `on: release:` trigger never
-        # actually fires from this job. This explicit `gh workflow run` call
-        # (workflow_dispatch, not workflow_call - there is no `uses:`
-        # reusable-workflow invocation here) is the real mechanism that keeps
-        # master-dev's catalog current after every release. Mod repositories have
-        # no such step: the catalog's daily schedule picks their releases up.
-        # Requires `actions: write` above.
-        # Mother repository only: a mod repository has no master-dev catalog to refresh.
-        if: endsWith(github.repository, '/jak-project')
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Triggering sync-global-catalog.yml on master-dev..."
-          gh workflow run sync-global-catalog.yml --ref master-dev --repo "${{ github.repository }}"

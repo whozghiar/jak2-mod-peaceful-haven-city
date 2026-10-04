@@ -1,6 +1,8 @@
 {
+  "enabledMcpjsonServers": ["graphify"],
   "permissions": {
     "allow": [
+      "mcp__graphify",
       "Bash(task compile-check *)",
       "PowerShell(task compile-check *)",
       "Bash(task build-release-game *)",

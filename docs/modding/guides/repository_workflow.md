@@ -292,9 +292,9 @@ a mod goes to `master-dev` with `git cherry-pick`, since the repositories share 
 Run `release.yml` from the mod repository: the steps are in
 [`how_to_create_a_mod.md`](how_to_create_a_mod.md#9-release), the pipeline and the inputs in
 [`mod_distribution_guide.md`](mod_distribution_guide.md). The release is tagged
-`<slug>-vX.Y.Z`, and the global catalog on `master-dev` lists it within a day. Releases
-published before a mod moved to its repository stay in `jak-project`, and the launcher keeps
-installing them.
+`<slug>-vX.Y.Z`, and the global catalog on `master-dev` lists it within a day: the catalog reads
+only the most advanced release of each mod repository. Releases published in `jak-project` before
+a mod moved to its repository stay there, but the catalog no longer lists them.
 
 ### Record a discovery
 
@@ -327,11 +327,10 @@ gh repo edit <owner>/<name> --visibility private --accept-visibility-change-cons
 | Your work in this clone (`task modding-switch`, `git push`, `task modding-sync-all`) | Same | Same |
 | Who sees the code, issues and releases | Everyone | You and the collaborators you invite |
 | New releases in the launcher | Listed by the global catalog | Not listed: players cannot download them |
-| Releases published before the mod moved to its repository | Installable | Still installable: they belong to `jak-project` |
 | GitHub Actions minutes (lint on each push, releases) | Free | Taken from the account's monthly free minutes; Windows runners count double |
 
 Making a private mod public is the same command with `--visibility public`; the catalog lists its
-releases at its next daily run. The mother repository stays public: it is a fork of a public
+latest release at its next daily run. The mother repository stays public: it is a fork of a public
 repository.
 
 ### List every mod repository
@@ -400,7 +399,7 @@ To archive a branch yourself: `git tag -a archive/<branch> -m "Archived" origin/
 | Automatic | When |
 | :--- | :--- |
 | Upstream into `master`, then `master-dev` | Daily at 10:00 UTC (`sync-upstream.yaml`) |
-| Global catalog rebuilt from every repository's releases | Daily at 10:30 UTC, and after each release of the mother |
+| Global catalog rebuilt from each mod repository's most advanced release | Daily at 10:30 UTC |
 | Lint | On every push, in every repository |
 | Knowledge base refreshed, skills linked | At the start of each Claude Code session |
 

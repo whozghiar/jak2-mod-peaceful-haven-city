@@ -34,7 +34,7 @@ day-to-day workflow around them is in [`repository_workflow.md`](repository_work
                 on demand: task modding-sync-all, or task modding-sync-branch -- --push
                 on push: lint.yml; by hand: build.yml, release.yml
 
-GitHub Releases of any of these repositories
+Most advanced release of each public mod repository
         --> sync-global-catalog.yml --> index.json on master-dev (one launcher URL for every mod)
 ```
 
@@ -48,7 +48,7 @@ Workflows that push, publish or spend real CI time start with an explicit actor 
 `authorize` job, or an early step) instead of relying only on GitHub's write-access rule:
 
 - **Repository owner only:** `sync-upstream.yaml`, `build.yml`, `release.yml`.
-- **Owner, or `release.yml`'s own automation** (`github-actions[bot]`): `sync-global-catalog.yml`, which `release.yml` dispatches with `gh workflow run`.
+- **Owner, or GitHub's own automation** (`github-actions[bot]`): `sync-global-catalog.yml`.
 
 An unauthorized run fails at once with an `::error::` naming who triggered it.
 
@@ -60,9 +60,8 @@ Open by design:
 - `lint.yml` runs on `push`, which already requires write access, and is read-only
   (`contents: read`).
 
-**Mother repository guard.** The jobs that only make sense in the mother repository —
-`sync-upstream.yaml`, `sync-global-catalog.yml`, `mod-suggestion-triage.yml`, and
-`release.yml`'s "Trigger Downstream Syncs" step — carry
+**Mother repository guard.** The workflows that only make sense in the mother repository —
+`sync-upstream.yaml`, `sync-global-catalog.yml` and `mod-suggestion-triage.yml` — carry
 `if: endsWith(github.repository, '/jak-project')`: they run in the mother repository and in any
 fork of it that keeps the name, never in a mod repository. A mod repository also drops those
 files when it syncs, and keeps only `release.yml`, `lint.yml` and `build.yml`
@@ -114,12 +113,8 @@ files when it syncs, and keeps only `release.yml`, `lint.yml` and `build.yml`
   - tags the release `<slug>-vX.Y.Z`. In a mod repository, the slug and game come from its
     `index.json` (else from its `<game>-mod-<slug>` name), so the launcher keeps the same
     catalog key.
-- **Downstream sync (mother repository only):** `gh workflow run sync-global-catalog.yml`. A
-  release published with `GITHUB_TOKEN` cannot fire another workflow's `on: release` trigger, so
-  this explicit call is what refreshes the catalog; it needs `actions: write`. Releases of mod
-  repositories reach the catalog through its daily schedule.
-- **Permissions:** `contents: read` by default; only the `publish` job gets `contents: write` and
-  `actions: write`.
+- **Catalog:** the global catalog lists the release at its next daily run (section 8).
+- **Permissions:** `contents: read` by default; only the `publish` job gets `contents: write`.
 
 ## 7. Mod suggestion triage (`mod-suggestion-triage.yml`)
 
@@ -134,17 +129,23 @@ inherits.
 
 ## 8. Global catalog (`sync-global-catalog.yml`)
 
-- **Runs:** when a release of this repository is published, edited or deleted by hand; when
-  `release.yml` dispatches it; daily at 10:30 UTC; or by hand. Owner or `release.yml`'s
-  automation only.
+- **Runs:** daily at 10:30 UTC, or by hand from the Actions tab to list a new release at once.
+  Owner or GitHub's automation only.
 - **Does:** runs `scripts/modding/sync_global_catalog.py` on `master-dev`:
-  1. fetches the releases of this repository and of every public mod repository (same owner,
-     `opengoal-mod` topic);
-  2. reads the catalog attached to each release and dedupes versions;
-  3. takes each mod repository's own `index.json` as the source of its name, description and
-     cover, and sends players to the repository;
+  1. lists the public mod repositories (same owner, `opengoal-mod` topic);
+  2. picks the most advanced release of each one: the highest version in its tag
+     (`<slug>-vX.Y.Z`, where `1.1.0-rc1` ranks below `1.1.0`). Drafts are skipped, a
+     pre-release counts like any other release, and a release without an `index.json` asset is
+     passed over for the next one;
+  3. takes that release's `index.json` as the mod's whole entry (name, description, cover, and
+     every version, which `release.yml` accumulates release after release), sends players to the
+     repository, and keeps the texture packs whose archive the release carries;
   4. writes the root `index.json` in the OpenGOAL Launcher mod-source v1 schema and pushes it to
-     `master-dev`, only when something changed.
+     `master-dev`, only when something changed. When GitHub cannot be reached, it fails and
+     leaves the catalog as it was.
+- **Never read:** branches, the `index.json` committed in a repository, private repositories,
+  and the mother repository's own releases. A mod with no release in its own repository is not
+  listed.
 - **Why:** players add one URL to the launcher,
   `https://raw.githubusercontent.com/<owner>/jak-project/master-dev/index.json`, and get every
   published mod and texture pack.
@@ -158,4 +159,4 @@ inherits.
 | `build.yml` | Dispatch | Owner | Yes | Windows and Linux compile check, 3-day artifacts |
 | `release.yml` | Dispatch | Owner | Yes | Builds, packages and publishes a release, updates the mod's `index.json` |
 | `mod-suggestion-triage.yml` | Issues opened or edited | Anyone | No | Labels mod suggestions |
-| `sync-global-catalog.yml` | Release events, daily 10:30 UTC, dispatch | Owner or automation | No | Rebuilds the global `index.json` on `master-dev` |
+| `sync-global-catalog.yml` | Daily 10:30 UTC, dispatch | Owner or automation | No | Rebuilds the global `index.json` on `master-dev` from each mod repository's latest release |

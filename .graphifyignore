@@ -1,0 +1,8 @@
+# graphify scope: first-party code and docs only
+# vendored libraries would dominate the graph
+third-party/
+# data dumps and fixtures: huge word count, no architecture
+game/assets/
+*.min.json
+**/db-fixtures/
+test/decompiler/**/*.txt

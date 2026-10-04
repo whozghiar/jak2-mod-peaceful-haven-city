@@ -457,19 +457,18 @@ task kb-update
 ### 6. `task modding-sync-catalog -- [options]`
 - **Script:** [`sync_global_catalog.py`](../../../scripts/modding/sync_global_catalog.py)
 - **When?** On `master-dev` to refresh and rebuild the unified root `index.json` catalog containing all published mods and versions.
-- **Why?** Queries the GitHub Releases of this repository and of every mod repository (same owner, `opengoal-mod` topic), parses the catalog attached to each release, dedupes versions, takes each mod repository's own `index.json` as the source of its name, description and website, and writes the consolidated Launcher v1 schema file.
+- **Why?** Lists the public mod repositories (same owner, `opengoal-mod` topic), takes from each one the `index.json` attached to its most advanced release (highest version in the tag), and writes the consolidated Launcher v1 schema file. Branches, the `index.json` committed in a repository and the mother repository's releases are never read, so a mod with no release in its own repository is not listed. When GitHub cannot be reached, it stops and leaves `index.json` untouched.
 - **CLI Parameters (`-- <args>`):**
   | Parameter | Type / Default | Description |
   | :--- | :--- | :--- |
-  | `--repo <owner/repo>` | String (`auto-detect`) | Target GitHub repository in `owner/repo` format. |
+  | `--repo <owner/repo>` | String (`auto-detect`) | Mother repository in `owner/repo` format; the mod repositories of its owner are read. |
   | `--output <path>` | Path (`<repo_root>/index.json`) | Output path for the consolidated catalog file. |
-  | `--offline` | Flag *(optional)* | Gathers releases strictly from local git release tags (`*-v*.*.*`) without calling GitHub REST API. |
   | `--source-name "<name>"` | String (`<Owner> OpenGOAL Mods Hub`) | Catalog display title shown in the OpenGOAL Launcher UI. |
   | `--dry-run` | Flag *(optional)* | Analyzes releases and prints summary statistics to terminal without modifying `index.json`. |
 
 *Example:*
 ```bash
-task modding-sync-catalog -- --offline
+task modding-sync-catalog -- --dry-run
 ```
 
 ---

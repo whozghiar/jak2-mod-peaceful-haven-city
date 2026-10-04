@@ -187,7 +187,7 @@ tasks:
     cmds:
       - "{{.PYTHON}} ./scripts/modding/sync_all_mods.py {{.CLI_ARGS}}"
   modding-sync-catalog:
-    desc: "Regenerate master-dev root index.json global catalog from published GitHub Releases (scripts/modding/sync_global_catalog.py). Add -- --offline or --dry-run"
+    desc: "Regenerate master-dev root index.json global catalog from the most advanced release of each mod repository (scripts/modding/sync_global_catalog.py). Add -- --dry-run"
     cmds:
       - "{{.PYTHON}} ./scripts/modding/sync_global_catalog.py {{.CLI_ARGS}}"
   modding-package-texture-pack:

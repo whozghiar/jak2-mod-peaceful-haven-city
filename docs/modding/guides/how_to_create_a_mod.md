@@ -29,7 +29,7 @@ works without editing any script or workflow.
 3. **Point players at your catalog.** In your `README.md`, replace the catalog URL of the player
    section with `https://raw.githubusercontent.com/<you>/jak-project/master-dev/index.json`. Your
    `index.json` still lists the original's mods: the catalog workflow (daily, or run it from the
-   Actions tab) rebuilds it from your own releases and mod repositories, so they drop out at its
+   Actions tab) rebuilds it from your own mod repositories' releases, so they drop out at its
    first run and yours appear with your first release.
 4. **The knowledge base** (`.agents/skills`, a submodule) points at the original's public
    repository: reading works as is. To record your own discoveries (section 7), fork

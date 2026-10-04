@@ -150,6 +150,6 @@ For each mod, you can manually drop a cover thumbnail at `docs/img/mod/mod_cover
 
 > [!NOTE]
 > **Automated Master Catalog Maintenance:**
-> The consolidated root catalog is rebuilt by the `sync-global-catalog.yml` workflow (`scripts/modding/sync_global_catalog.py`, `task modding-sync-catalog`): right after each release of this repository, and daily for the releases of mod repositories, which it finds by their `opengoal-mod` topic.
+> The consolidated root catalog is rebuilt daily by the `sync-global-catalog.yml` workflow (`scripts/modding/sync_global_catalog.py`, `task modding-sync-catalog`) from the mod repositories alone, which it finds by their `opengoal-mod` topic: for each one, the `index.json` attached to its most advanced release.
 
 > For a full screenshot-by-screenshot walkthrough (including in-game activation), see ["Installing a Mod (Players)"](../../../README.md#installing-a-mod-players) in the root README.
